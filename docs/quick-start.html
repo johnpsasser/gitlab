@@ -1,0 +1,283 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>GitLab Quick Start Guide</title>
+  <style>
+    :root {
+      --bg: #ffffff;
+      --fg: #1a1a2e;
+      --accent: #e74d3c;
+      --accent-light: #fdf0ee;
+      --border: #e0e0e0;
+      --code-bg: #f5f5f5;
+      --code-border: #ddd;
+      --success: #27ae60;
+      --warning: #f39c12;
+    }
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+      color: var(--fg);
+      background: var(--bg);
+      line-height: 1.6;
+      max-width: 800px;
+      margin: 0 auto;
+      padding: 2rem 1.5rem;
+    }
+    h1 { font-size: 2rem; margin-bottom: 0.5rem; }
+    h2 {
+      font-size: 1.4rem;
+      margin-top: 2.5rem;
+      margin-bottom: 1rem;
+      padding-bottom: 0.4rem;
+      border-bottom: 2px solid var(--accent);
+    }
+    h3 { font-size: 1.1rem; margin-top: 1.5rem; margin-bottom: 0.5rem; }
+    p, li { margin-bottom: 0.6rem; }
+    ol, ul { padding-left: 1.5rem; }
+    a { color: var(--accent); text-decoration: none; }
+    a:hover { text-decoration: underline; }
+    .subtitle { color: #666; font-size: 1rem; margin-bottom: 2rem; }
+    .step-number {
+      display: inline-block;
+      background: var(--accent);
+      color: white;
+      width: 1.6rem;
+      height: 1.6rem;
+      border-radius: 50%;
+      text-align: center;
+      font-size: 0.85rem;
+      line-height: 1.6rem;
+      margin-right: 0.5rem;
+      font-weight: bold;
+    }
+    .prereq {
+      background: var(--accent-light);
+      border-left: 4px solid var(--accent);
+      padding: 1rem 1.2rem;
+      margin: 1rem 0;
+      border-radius: 0 4px 4px 0;
+    }
+    .note {
+      background: #fff8e1;
+      border-left: 4px solid var(--warning);
+      padding: 1rem 1.2rem;
+      margin: 1rem 0;
+      border-radius: 0 4px 4px 0;
+    }
+    pre {
+      background: var(--code-bg);
+      border: 1px solid var(--code-border);
+      border-radius: 4px;
+      padding: 1rem;
+      overflow-x: auto;
+      margin: 0.8rem 0;
+      position: relative;
+    }
+    code {
+      font-family: "SF Mono", "Fira Code", "Fira Mono", Menlo, Consolas, monospace;
+      font-size: 0.9em;
+    }
+    p code, li code {
+      background: var(--code-bg);
+      padding: 0.15rem 0.4rem;
+      border-radius: 3px;
+      border: 1px solid var(--code-border);
+    }
+    .copy-btn {
+      position: absolute;
+      top: 0.5rem;
+      right: 0.5rem;
+      background: white;
+      border: 1px solid var(--code-border);
+      border-radius: 3px;
+      padding: 0.2rem 0.5rem;
+      cursor: pointer;
+      font-size: 0.75rem;
+      color: #666;
+    }
+    .copy-btn:hover { background: var(--accent-light); color: var(--accent); }
+    .copy-btn.copied { color: var(--success); border-color: var(--success); }
+    table {
+      width: 100%;
+      border-collapse: collapse;
+      margin: 1rem 0;
+    }
+    th, td {
+      text-align: left;
+      padding: 0.6rem 0.8rem;
+      border: 1px solid var(--border);
+    }
+    th { background: var(--code-bg); font-weight: 600; }
+    footer {
+      margin-top: 3rem;
+      padding-top: 1rem;
+      border-top: 1px solid var(--border);
+      color: #888;
+      font-size: 0.85rem;
+    }
+  </style>
+</head>
+<body>
+  <h1>GitLab Quick Start Guide</h1>
+  <p class="subtitle">Developer onboarding for the internal GitLab instance</p>
+
+  <h2>1. Prerequisites</h2>
+  <div class="prereq">
+    <p>Before you begin, ensure you have:</p>
+    <ul>
+      <li>A <strong>Google Workspace</strong> account on your organization's domain</li>
+      <li>A <strong>Tailscale</strong> account (invite from your team admin)</li>
+      <li><strong>Git</strong> installed on your machine</li>
+    </ul>
+  </div>
+
+  <h2>2. Install Tailscale</h2>
+  <p>Tailscale provides VPN access to the GitLab instance. Install it for your platform:</p>
+  <table>
+    <tr><th>Platform</th><th>Install</th></tr>
+    <tr><td>macOS</td><td><a href="https://tailscale.com/download/mac">Download from Tailscale</a> or <code>brew install --cask tailscale</code></td></tr>
+    <tr><td>Linux</td><td><a href="https://tailscale.com/download/linux">Install script</a>: <code>curl -fsSL https://tailscale.com/install.sh | sh</code></td></tr>
+    <tr><td>Windows</td><td><a href="https://tailscale.com/download/windows">Download from Tailscale</a></td></tr>
+  </table>
+  <p>After installing, open Tailscale and sign in with your organization credentials. You should see a green "Connected" status.</p>
+
+  <h2>3. Connect to GitLab</h2>
+  <ol>
+    <li>Ensure Tailscale is connected (check the icon in your menu bar/system tray)</li>
+    <li>Open your browser and navigate to: <pre><code>https://gitlab.yourcompany.com</code><button class="copy-btn" onclick="copyCode(this)">Copy</button></pre></li>
+    <li>Click <strong>"Sign in with Google"</strong></li>
+    <li>Authenticate with your Google Workspace account</li>
+    <li>You'll be redirected to your GitLab dashboard</li>
+  </ol>
+  <div class="note">
+    <strong>First time?</strong> Your account is created automatically on first sign-in. You'll have a "Regular" role by default. Ask your admin to grant additional permissions if needed.
+  </div>
+
+  <h2>4. Set Up Your SSH Key</h2>
+  <h3><span class="step-number">1</span>Generate an SSH key (if you don't have one)</h3>
+  <pre><code>ssh-keygen -t ed25519 -C "your.email@yourcompany.com"</code><button class="copy-btn" onclick="copyCode(this)">Copy</button></pre>
+  <p>Press Enter to accept the default file location. Set a passphrase when prompted.</p>
+
+  <h3><span class="step-number">2</span>Copy your public key</h3>
+  <pre><code># macOS
+pbcopy &lt; ~/.ssh/id_ed25519.pub
+
+# Linux
+xclip -selection clipboard &lt; ~/.ssh/id_ed25519.pub
+
+# Windows (PowerShell)
+Get-Content ~/.ssh/id_ed25519.pub | Set-Clipboard</code><button class="copy-btn" onclick="copyCode(this)">Copy</button></pre>
+
+  <h3><span class="step-number">3</span>Add the key to GitLab</h3>
+  <ol>
+    <li>Go to <strong>GitLab &rarr; User Settings &rarr; SSH Keys</strong> (click your avatar, top-right)</li>
+    <li>Paste your public key into the <strong>"Key"</strong> field</li>
+    <li>Give it a descriptive <strong>Title</strong> (e.g., "Work MacBook")</li>
+    <li>Click <strong>"Add key"</strong></li>
+  </ol>
+
+  <h3><span class="step-number">4</span>Configure SSH</h3>
+  <p>Add the following to <code>~/.ssh/config</code>:</p>
+  <pre><code>Host gitlab.yourcompany.com
+  HostName gitlab.yourcompany.com
+  User git
+  IdentityFile ~/.ssh/id_ed25519
+  AddKeysToAgent yes</code><button class="copy-btn" onclick="copyCode(this)">Copy</button></pre>
+
+  <h3><span class="step-number">5</span>Test the connection</h3>
+  <pre><code>ssh -T git@gitlab.yourcompany.com</code><button class="copy-btn" onclick="copyCode(this)">Copy</button></pre>
+  <p>You should see: <code>Welcome to GitLab, @yourusername!</code></p>
+
+  <h2>5. Create a Personal Access Token</h2>
+  <p>Personal access tokens are used for HTTPS Git operations and API access.</p>
+  <ol>
+    <li>Go to <strong>User Settings &rarr; Access Tokens</strong></li>
+    <li>Click <strong>"Add new token"</strong></li>
+    <li>Enter a <strong>Token name</strong> (e.g., "CLI access")</li>
+    <li>Set an <strong>Expiration date</strong> (max 365 days)</li>
+    <li>Select scopes:
+      <ul>
+        <li><code>api</code> &mdash; full API access</li>
+        <li><code>read_repository</code> &mdash; read-only Git access</li>
+        <li><code>write_repository</code> &mdash; read-write Git access</li>
+      </ul>
+    </li>
+    <li>Click <strong>"Create personal access token"</strong></li>
+    <li><strong>Copy the token immediately</strong> &mdash; it won't be shown again</li>
+  </ol>
+  <div class="note">
+    <strong>Store your token securely.</strong> Use a password manager or your OS keychain. Never commit tokens to version control.
+  </div>
+
+  <h2>6. Clone Your First Repository</h2>
+  <h3>Via SSH (recommended)</h3>
+  <pre><code>git clone git@gitlab.yourcompany.com:your-group/your-project.git</code><button class="copy-btn" onclick="copyCode(this)">Copy</button></pre>
+
+  <h3>Via HTTPS (with personal access token)</h3>
+  <pre><code>git clone https://gitlab.yourcompany.com/your-group/your-project.git
+# When prompted for password, use your Personal Access Token</code><button class="copy-btn" onclick="copyCode(this)">Copy</button></pre>
+
+  <p>To avoid entering your token every time, configure Git credential storage:</p>
+  <pre><code># macOS (uses Keychain)
+git config --global credential.helper osxkeychain
+
+# Linux (stores in memory for 1 hour)
+git config --global credential.helper 'cache --timeout=3600'</code><button class="copy-btn" onclick="copyCode(this)">Copy</button></pre>
+
+  <h2>7. Troubleshooting</h2>
+  <table>
+    <tr><th>Problem</th><th>Solution</th></tr>
+    <tr>
+      <td><strong>Can't reach GitLab URL</strong></td>
+      <td>Check that Tailscale is connected. Try <code>tailscale status</code> in your terminal. If disconnected, run <code>tailscale up</code>.</td>
+    </tr>
+    <tr>
+      <td><strong>Google OAuth redirect error</strong></td>
+      <td>Ensure you're signing in with your <strong>organization</strong> Google account, not a personal one. Clear your browser cookies for the GitLab domain and try again.</td>
+    </tr>
+    <tr>
+      <td><strong>"Permission denied (publickey)"</strong></td>
+      <td>Verify your SSH key is added to GitLab. Run <code>ssh-add -l</code> to check loaded keys. If empty, run <code>ssh-add ~/.ssh/id_ed25519</code>.</td>
+    </tr>
+    <tr>
+      <td><strong>SSH key format not accepted</strong></td>
+      <td>GitLab supports ED25519, RSA (2048+ bits), and ECDSA keys. If using an older RSA key, ensure it's at least 2048 bits: <code>ssh-keygen -l -f ~/.ssh/id_rsa</code></td>
+    </tr>
+    <tr>
+      <td><strong>HTTPS clone asks for username</strong></td>
+      <td>Use your GitLab username (not email). For the password, use your Personal Access Token, not your Google password.</td>
+    </tr>
+    <tr>
+      <td><strong>SSL certificate error</strong></td>
+      <td>The GitLab instance uses a valid ACM certificate. If you see SSL errors, your Tailscale connection may have dropped. Reconnect and retry.</td>
+    </tr>
+    <tr>
+      <td><strong>"403 Forbidden" on git push</strong></td>
+      <td>Check that your Personal Access Token has the <code>write_repository</code> scope. Check that you have Developer or Maintainer role on the project.</td>
+    </tr>
+  </table>
+
+  <footer>
+    <p>Internal use only. For support, contact your GitLab administrator.</p>
+  </footer>
+
+  <script>
+    function copyCode(btn) {
+      const pre = btn.parentElement;
+      const code = pre.querySelector('code');
+      const text = code.textContent;
+      navigator.clipboard.writeText(text).then(() => {
+        btn.textContent = 'Copied!';
+        btn.classList.add('copied');
+        setTimeout(() => {
+          btn.textContent = 'Copy';
+          btn.classList.remove('copied');
+        }, 2000);
+      });
+    }
+  </script>
+</body>
+</html>
