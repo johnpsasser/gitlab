@@ -1,3 +1,11 @@
+output "instance_id" {
+  value = aws_instance.gitlab.id
+}
+
+output "instance_private_ip" {
+  value = aws_instance.gitlab.private_ip
+}
+
 output "iam_role_arn" {
   value = aws_iam_role.gitlab.arn
 }
