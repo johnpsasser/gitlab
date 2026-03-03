@@ -3,11 +3,15 @@ terraform/.terraform/
 terraform/**/.terraform/
 *.tfstate
 *.tfstate.backup
+*.tfplan
 *.tfvars
 
 # Secrets
 *.pem
 *.key
+
+# Docs
+docs/plans/
 
 # OS
 .DS_Store
