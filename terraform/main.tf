@@ -44,3 +44,8 @@ module "networking" {
   vpc_cidr     = var.vpc_cidr
   aws_region   = var.aws_region
 }
+
+module "monitoring" {
+  source       = "./modules/monitoring"
+  project_name = var.project_name
+}
