@@ -11,14 +11,6 @@ resource "aws_security_group" "alb" {
     cidr_blocks = [var.vpc_cidr]
   }
 
-  egress {
-    description     = "HTTP to GitLab"
-    from_port       = 80
-    to_port         = 80
-    protocol        = "tcp"
-    security_groups = [aws_security_group.gitlab.id]
-  }
-
   tags = {
     Name = "${var.project_name}-alb-sg"
   }
@@ -28,14 +20,6 @@ resource "aws_security_group" "gitlab" {
   name_prefix = "${var.project_name}-gitlab-"
   description = "Security group for GitLab EC2 instance"
   vpc_id      = aws_vpc.main.id
-
-  ingress {
-    description     = "HTTP from ALB"
-    from_port       = 80
-    to_port         = 80
-    protocol        = "tcp"
-    security_groups = [aws_security_group.alb.id]
-  }
 
   ingress {
     description = "SSH from VPC (Git over SSH via Tailscale)"
@@ -72,4 +56,25 @@ resource "aws_security_group" "gitlab" {
   tags = {
     Name = "${var.project_name}-gitlab-sg"
   }
+}
+
+# Standalone rules to break the circular dependency between ALB and GitLab SGs
+resource "aws_security_group_rule" "alb_to_gitlab" {
+  type                     = "egress"
+  description              = "HTTP to GitLab"
+  from_port                = 80
+  to_port                  = 80
+  protocol                 = "tcp"
+  security_group_id        = aws_security_group.alb.id
+  source_security_group_id = aws_security_group.gitlab.id
+}
+
+resource "aws_security_group_rule" "gitlab_from_alb" {
+  type                     = "ingress"
+  description              = "HTTP from ALB"
+  from_port                = 80
+  to_port                  = 80
+  protocol                 = "tcp"
+  security_group_id        = aws_security_group.gitlab.id
+  source_security_group_id = aws_security_group.alb.id
 }
