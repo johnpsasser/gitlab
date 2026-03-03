@@ -2,17 +2,48 @@
 
 > **For Claude:** REQUIRED SUB-SKILL: Use superpowers:executing-plans to implement this plan task-by-task.
 
-**Goal:** Deploy a production-ready, compliance-informed GitLab CE instance on AWS EC2 behind Tailscale VPN, fully managed by Terraform.
+**Goal:** Write, validate, and scan all Terraform modules, user_data scripts, and documentation for a production-ready GitLab CE deployment on AWS. This plan does NOT deploy to AWS — see `2026-03-02-airgapped-gitlab-deployment.md` for that.
 
 **Architecture:** GitLab Omnibus on EC2 in a private subnet, fronted by an internal ALB with ACM TLS. Access via Tailscale VPN mesh. Google OAuth for authentication. All infrastructure as Terraform with S3/DynamoDB state backend. Compliance-informed: FIPS AMI, CloudTrail, VPC Flow Logs, KMS encryption.
 
-**Tech Stack:** Terraform, AWS (VPC, EC2, ALB, ACM, Route 53, S3, Secrets Manager, CloudTrail, CloudWatch, SSM), GitLab CE Omnibus, Tailscale, Google OAuth
+**Tech Stack:** Terraform (ARM64/Apple Silicon), Checkov, AWS (VPC, EC2, ALB, ACM, Route 53, S3, Secrets Manager, CloudTrail, CloudWatch, SSM), GitLab CE Omnibus, Tailscale, Google OAuth
 
 **Design doc:** `docs/plans/2026-03-02-airgapped-gitlab-design.md`
+**Deployment plan:** `docs/plans/2026-03-02-airgapped-gitlab-deployment.md`
+
+**Local tooling requirements:**
+- Terraform (ARM64 binary for Apple Silicon)
+- Checkov (`pip install checkov` or `brew install checkov`)
+- AWS CLI configured with valid credentials (for `terraform plan`)
 
 ---
 
-## Task 1: Project Scaffolding
+## Task 1: Verify Local Tooling
+
+**Step 1: Verify Terraform is ARM64**
+
+Run: `terraform version`
+Expected: Output should include `darwin_arm64`. If it shows `darwin_amd64`, reinstall:
+```bash
+brew uninstall terraform && brew install terraform
+# or download directly from releases.hashicorp.com for darwin_arm64
+```
+
+**Step 2: Verify Checkov is installed**
+
+Run: `checkov --version`
+Expected: Version number (e.g., `3.x.x`)
+
+**Step 3: Verify AWS credentials are configured**
+
+Run: `aws sts get-caller-identity`
+Expected: JSON output with Account, UserId, Arn
+
+**Step 4: Commit (nothing to commit — verification only)**
+
+---
+
+## Task 2: Project Scaffolding
 
 **Files:**
 - Create: `.gitignore`
@@ -141,7 +172,7 @@ git commit -m "Add project scaffolding and state backend bootstrap"
 
 ---
 
-## Task 2: Terraform Root Configuration
+## Task 3: Terraform Root Configuration
 
 **Files:**
 - Create: `terraform/backend.tf`
@@ -307,7 +338,7 @@ git commit -m "Add Terraform root configuration with providers and variables"
 
 ---
 
-## Task 3: Networking Module — VPC, Subnets, NAT Gateway
+## Task 4: Networking Module — VPC, Subnets, NAT Gateway
 
 **Files:**
 - Create: `terraform/modules/networking/variables.tf`
@@ -493,7 +524,7 @@ git commit -m "Add networking module: VPC, subnets, NAT gateway"
 
 ---
 
-## Task 4: Networking Module — VPC Flow Logs
+## Task 5: Networking Module — VPC Flow Logs
 
 **Files:**
 - Create: `terraform/modules/networking/flow_logs.tf`
@@ -572,7 +603,7 @@ git commit -m "Add VPC flow logs to S3 with lifecycle policy"
 
 ---
 
-## Task 5: Networking Module — VPC Endpoints
+## Task 6: Networking Module — VPC Endpoints
 
 **Files:**
 - Create: `terraform/modules/networking/endpoints.tf`
@@ -693,7 +724,7 @@ git commit -m "Add VPC endpoints: S3, SSM, Secrets Manager, CloudWatch Logs"
 
 ---
 
-## Task 6: Networking Module — Security Groups
+## Task 7: Networking Module — Security Groups
 
 **Files:**
 - Create: `terraform/modules/networking/security_groups.tf`
@@ -806,7 +837,7 @@ git commit -m "Add ALB and GitLab security groups"
 
 ---
 
-## Task 7: Monitoring Module — CloudTrail
+## Task 8: Monitoring Module — CloudTrail
 
 **Files:**
 - Create: `terraform/modules/monitoring/variables.tf`
@@ -955,7 +986,7 @@ git commit -m "Add monitoring module with CloudTrail"
 
 ---
 
-## Task 8: Monitoring Module — CloudWatch Alarms
+## Task 9: Monitoring Module — CloudWatch Alarms
 
 **Files:**
 - Create: `terraform/modules/monitoring/cloudwatch.tf`
@@ -1035,7 +1066,7 @@ git commit -m "Add CloudWatch alarms for CPU and status checks"
 
 ---
 
-## Task 9: GitLab Module — IAM Role & Instance Profile
+## Task 10: GitLab Module — IAM Role & Instance Profile
 
 **Files:**
 - Create: `terraform/modules/gitlab/variables.tf`
@@ -1225,7 +1256,7 @@ git commit -m "Add GitLab IAM role with least-privilege policies"
 
 ---
 
-## Task 10: GitLab Module — S3 Backup Bucket
+## Task 11: GitLab Module — S3 Backup Bucket
 
 **Files:**
 - Create: `terraform/modules/gitlab/backup.tf`
@@ -1312,7 +1343,7 @@ git commit -m "Add S3 backup bucket with versioning and Glacier lifecycle"
 
 ---
 
-## Task 11: GitLab Module — Secrets Manager
+## Task 12: GitLab Module — Secrets Manager
 
 **Files:**
 - Create: `terraform/modules/gitlab/secrets.tf`
@@ -1361,7 +1392,7 @@ git commit -m "Add Secrets Manager entries for GitLab credentials"
 
 ---
 
-## Task 12: GitLab Module — User Data Script
+## Task 13: GitLab Module — User Data Script
 
 **Files:**
 - Create: `terraform/modules/gitlab/user_data.sh`
@@ -1529,7 +1560,7 @@ git commit -m "Add GitLab EC2 user_data bootstrap script"
 
 ---
 
-## Task 13: GitLab Module — EC2 Instance
+## Task 14: GitLab Module — EC2 Instance
 
 **Files:**
 - Create: `terraform/modules/gitlab/ec2.tf`
@@ -1620,7 +1651,7 @@ git commit -m "Add GitLab EC2 instance with encrypted data volume"
 
 ---
 
-## Task 14: ALB Module
+## Task 15: ALB Module
 
 **Files:**
 - Create: `terraform/modules/alb/variables.tf`
@@ -1871,7 +1902,7 @@ git commit -m "Add ALB module with ACM cert, HTTPS listener, and access logging"
 
 ---
 
-## Task 15: DNS Module
+## Task 16: DNS Module
 
 **Files:**
 - Create: `terraform/modules/dns/variables.tf`
@@ -1959,7 +1990,7 @@ git commit -m "Add DNS module with Route 53 private hosted zone"
 
 ---
 
-## Task 16: Wire All Modules Together in main.tf
+## Task 17: Wire All Modules Together in main.tf
 
 **Files:**
 - Modify: `terraform/main.tf` (complete module composition)
@@ -2129,7 +2160,7 @@ git commit -m "Wire all modules together in root main.tf"
 
 ---
 
-## Task 17: Create terraform.tfvars.example
+## Task 18: Create terraform.tfvars.example
 
 **Files:**
 - Create: `terraform/terraform.tfvars.example`
@@ -2170,156 +2201,119 @@ git commit -m "Add terraform.tfvars.example with documented variables"
 
 ---
 
-## Task 18: Deployment — Bootstrap State Backend
+## Task 19: Checkov Security Scan
 
-This is a manual step. Instructions for the operator:
+**Step 1: Run Checkov against all Terraform modules**
 
-**Step 1: Bootstrap**
+Run: `checkov -d terraform/ --framework terraform --compact --check-level HIGH`
+Expected: Report showing HIGH and CRITICAL findings.
 
-```bash
-cd terraform/bootstrap
-terraform init
-terraform apply
+**Step 2: Review findings**
+
+Categorize each finding:
+- **Fix:** HIGH/CRITICAL findings that represent real security gaps
+- **Skip:** Findings that are false positives or not applicable (e.g., "S3 bucket should have access logging" on a logging bucket itself)
+
+**Step 3: Fix HIGH/CRITICAL findings**
+
+Apply fixes to the relevant Terraform files. Common expected findings and fixes:
+- S3 bucket logging — add access logging where missing (except on log buckets themselves)
+- EBS encryption — already handled (KMS)
+- Security group open egress — intentional for NAT-based outbound, add `#checkov:skip=CKV_AWS_XXX: Outbound via NAT Gateway required for updates` inline
+- IMDSv2 — already enforced in ec2.tf
+
+**Step 4: Add `.checkov.yml` for permanent skip rules**
+
+Create `terraform/.checkov.yml`:
+```yaml
+# Checkov configuration
+# Skip rules that are documented accepted risks
+skip-check:
+  # Log buckets don't need their own access logging (circular dependency)
+  # Documented in docs/cmmc-l2-gap-analysis.md
+framework:
+  - terraform
+compact: true
 ```
 
-**Step 2: Note outputs and update backend.tf**
+**Step 5: Re-run Checkov and verify no HIGH/CRITICAL remain**
 
-Replace `ACCOUNT_ID` in `terraform/backend.tf` with the actual account ID from the output.
+Run: `checkov -d terraform/ --framework terraform --compact --check-level HIGH`
+Expected: All checks passed or only skipped (with inline justification)
 
-**Step 3: Initialize main Terraform**
-
-```bash
-cd terraform
-cp terraform.tfvars.example terraform.tfvars
-# Edit terraform.tfvars with actual values
-terraform init
-```
-
-**Step 4: Commit backend.tf update**
+**Step 6: Commit**
 
 ```bash
-git add terraform/backend.tf
-git commit -m "Update backend.tf with actual state bucket name"
-```
-
----
-
-## Task 19: Deployment — Populate Secrets & Apply
-
-Manual steps for the operator:
-
-**Step 1: Create Google OAuth credentials**
-
-1. Go to Google Cloud Console → APIs & Services → Credentials
-2. Create OAuth 2.0 Client ID (Web application type)
-3. Set authorized redirect URI: `https://gitlab.yourcompany.com/users/auth/google_oauth2/callback`
-4. Note the Client ID and Client Secret
-
-**Step 2: Create Tailscale auth key**
-
-1. Go to Tailscale Admin Console → Settings → Keys
-2. Create a reusable auth key with tag `tag:gitlab`
-3. Note the key
-
-**Step 3: Generate root password**
-
-```bash
-openssl rand -base64 24
-```
-
-**Step 4: Populate Secrets Manager**
-
-```bash
-aws secretsmanager put-secret-value --secret-id gitlab/root-password --secret-string "YOUR_ROOT_PASSWORD"
-aws secretsmanager put-secret-value --secret-id gitlab/oauth/client-id --secret-string "YOUR_CLIENT_ID"
-aws secretsmanager put-secret-value --secret-id gitlab/oauth/client-secret --secret-string "YOUR_CLIENT_SECRET"
-aws secretsmanager put-secret-value --secret-id gitlab/tailscale/auth-key --secret-string "tskey-auth-XXXXX"
-```
-
-Note: Run `terraform apply` first to create the secret resources, then populate values with the commands above, then either reboot the EC2 instance or run user_data manually via SSM.
-
-**Step 5: Terraform apply**
-
-```bash
-cd terraform
-terraform plan -out=plan.tfplan
-# Review the plan carefully
-terraform apply plan.tfplan
-```
-
-**Step 6: Verify**
-
-```bash
-# Check instance is running
-aws ec2 describe-instances --filters "Name=tag:Name,Values=gitlab-ec2" --query 'Reservations[].Instances[].State.Name'
-
-# Connect via SSM
-aws ssm start-session --target INSTANCE_ID
-
-# On the instance, check GitLab status
-sudo gitlab-ctl status
+git add terraform/ terraform/.checkov.yml
+git commit -m "Fix Checkov HIGH/CRITICAL findings, add skip config with justifications"
 ```
 
 ---
 
-## Task 20: Post-Deploy — Verify Google OAuth & Harden
+## Task 20: Terraform Plan Verification
 
-Manual steps for the operator:
+**Prerequisites:** AWS credentials configured (`aws sts get-caller-identity` works). Terraform ARM64 binary.
 
-**Step 1: Connect via Tailscale and access GitLab**
+**Step 1: Initialize Terraform with local backend (no remote state yet)**
 
-1. Install Tailscale on your machine
-2. Join the tailnet
-3. Navigate to `https://gitlab.yourcompany.com`
-4. Log in with root / password from Secrets Manager
-
-**Step 2: Verify Google OAuth**
-
-1. Log out
-2. Click "Sign in with Google"
-3. Authenticate with your Google Workspace account
-4. Verify account is created and linked
-
-**Step 3: Disable password auth (after OAuth is confirmed working)**
-
-Via SSM on the instance:
-```bash
-sudo sed -i "s/password_authentication_enabled_for_web'] = true/password_authentication_enabled_for_web'] = false/" /etc/gitlab/gitlab.rb
-sudo gitlab-ctl reconfigure
+Create a temporary `terraform/backend_override.tf` for local planning:
+```hcl
+terraform {
+  backend "local" {
+    path = "/tmp/gitlab-terraform-plan.tfstate"
+  }
+}
 ```
 
-**Step 4: Back up gitlab-secrets.json**
+**Step 2: Create a minimal terraform.tfvars for plan**
+
+Create `terraform/terraform.tfvars` (git-ignored):
+```hcl
+aws_region    = "us-east-1"
+project_name  = "gitlab"
+vpc_cidr      = "10.0.0.0/16"
+instance_type = "t3.xlarge"
+
+domain_name      = "gitlab.example.com"
+google_oauth_hd  = "example.com"
+
+# Use placeholder values — we're only running plan, not apply
+dns_account_role_arn = "arn:aws:iam::123456789012:role/DNSAccess"
+route53_zone_id      = "Z0000000000000000000"
+```
+
+**Step 3: Run terraform init and plan**
+
+Run: `cd terraform && terraform init && terraform plan -out=plan.tfplan`
+Expected: Plan completes successfully showing resources to be created. May show errors for the cross-account DNS provider (expected — no real role to assume). Review the plan output for correctness.
+
+**Step 4: Verify resource count**
+
+Check that the plan creates the expected resources:
+- 1 VPC, 4 subnets, 1 NAT GW, 1 IGW
+- 3 security groups
+- 6 VPC endpoints
+- 1 EC2 instance, 1 EBS volume
+- 1 ALB, 1 target group, 1 listener
+- 5 Secrets Manager secrets
+- 1 CloudTrail
+- S3 buckets (backups, flow logs, cloudtrail, alb logs)
+- Route 53 private hosted zone + record
+
+**Step 5: Clean up**
 
 ```bash
-sudo aws secretsmanager put-secret-value \
-  --secret-id gitlab/secrets-json \
-  --secret-string "$(sudo cat /etc/gitlab/gitlab-secrets.json)" \
-  --region us-east-1
+rm terraform/backend_override.tf terraform/terraform.tfvars
+rm -rf terraform/.terraform /tmp/gitlab-terraform-plan.tfstate*
 ```
+
+**Step 6: Commit (nothing to commit — verification only)**
+
+Note: If the plan revealed issues, fix them, re-run Checkov (Task 19), and re-plan.
 
 ---
 
-## Task 21: Verify Backup & Restore
-
-Manual steps:
-
-**Step 1: Run a manual backup**
-
-```bash
-sudo gitlab-backup create STRATEGY=copy
-```
-
-**Step 2: Verify backup uploaded to S3**
-
-```bash
-aws s3 ls s3://$(terraform output -raw backup_bucket)/ --recursive
-```
-
-**Step 3: Document restore procedure in a runbook (create later in quick-start)**
-
----
-
-## Task 22: Documentation — quick-start.html
+## Task 21: Documentation — quick-start.html
 
 **Files:**
 - Create: `docs/quick-start.html`
@@ -2347,7 +2341,7 @@ git commit -m "Add developer quick-start onboarding guide"
 
 ---
 
-## Task 23: Documentation — CMMC Level 2 Gap Analysis
+## Task 22: Documentation — CMMC Level 2 Gap Analysis
 
 **Files:**
 - Create: `docs/cmmc-l2-gap-analysis.md`
@@ -2388,7 +2382,7 @@ git commit -m "Add CMMC Level 2 gap analysis document"
 
 ---
 
-## Task 24: Documentation — FedRAMP Moderate Gap Analysis
+## Task 23: Documentation — FedRAMP Moderate Gap Analysis
 
 **Files:**
 - Create: `docs/fedramp-moderate-gap-analysis.md`
@@ -2436,27 +2430,28 @@ git commit -m "Add FedRAMP Moderate gap analysis document"
 
 | Task | Description | Type |
 |------|-------------|------|
-| 1 | Project scaffolding + state backend bootstrap | Terraform |
-| 2 | Root Terraform configuration | Terraform |
-| 3 | Networking — VPC, subnets, NAT | Terraform |
-| 4 | Networking — VPC Flow Logs | Terraform |
-| 5 | Networking — VPC Endpoints | Terraform |
-| 6 | Networking — Security Groups | Terraform |
-| 7 | Monitoring — CloudTrail | Terraform |
-| 8 | Monitoring — CloudWatch Alarms | Terraform |
-| 9 | GitLab — IAM Role | Terraform |
-| 10 | GitLab — S3 Backup Bucket | Terraform |
-| 11 | GitLab — Secrets Manager | Terraform |
-| 12 | GitLab — User Data Script | Shell |
-| 13 | GitLab — EC2 Instance | Terraform |
-| 14 | ALB — Cert, Listener, Logging | Terraform |
-| 15 | DNS — Private Hosted Zone | Terraform |
-| 16 | Wire all modules in main.tf | Terraform |
-| 17 | terraform.tfvars.example | Config |
-| 18 | Deploy — Bootstrap state backend | Manual |
-| 19 | Deploy — Populate secrets & apply | Manual |
-| 20 | Post-deploy — Verify OAuth & harden | Manual |
-| 21 | Verify backup & restore | Manual |
-| 22 | Documentation — quick-start.html | Docs |
-| 23 | Documentation — CMMC L2 gap analysis | Docs |
-| 24 | Documentation — FedRAMP Moderate gap analysis | Docs |
+| 1 | Verify local tooling (Terraform ARM64, Checkov, AWS CLI) | Verify |
+| 2 | Project scaffolding + state backend bootstrap | Terraform |
+| 3 | Root Terraform configuration | Terraform |
+| 4 | Networking — VPC, subnets, NAT | Terraform |
+| 5 | Networking — VPC Flow Logs | Terraform |
+| 6 | Networking — VPC Endpoints | Terraform |
+| 7 | Networking — Security Groups | Terraform |
+| 8 | Monitoring — CloudTrail | Terraform |
+| 9 | Monitoring — CloudWatch Alarms | Terraform |
+| 10 | GitLab — IAM Role | Terraform |
+| 11 | GitLab — S3 Backup Bucket | Terraform |
+| 12 | GitLab — Secrets Manager | Terraform |
+| 13 | GitLab — User Data Script | Shell |
+| 14 | GitLab — EC2 Instance | Terraform |
+| 15 | ALB — Cert, Listener, Logging | Terraform |
+| 16 | DNS — Private Hosted Zone | Terraform |
+| 17 | Wire all modules in main.tf | Terraform |
+| 18 | terraform.tfvars.example | Config |
+| 19 | Checkov security scan — fix HIGH/CRITICAL | Security |
+| 20 | Terraform plan verification | Verify |
+| 21 | Documentation — quick-start.html | Docs |
+| 22 | Documentation — CMMC L2 gap analysis | Docs |
+| 23 | Documentation — FedRAMP Moderate gap analysis | Docs |
+
+**Next step:** After completing this plan, proceed to `docs/plans/2026-03-02-airgapped-gitlab-deployment.md` for AWS deployment.
