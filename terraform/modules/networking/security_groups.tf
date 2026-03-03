@@ -1,5 +1,6 @@
 resource "aws_security_group" "alb" {
   name_prefix = "${var.project_name}-alb-"
+  description = "Security group for GitLab ALB"
   vpc_id      = aws_vpc.main.id
 
   ingress {
@@ -25,6 +26,7 @@ resource "aws_security_group" "alb" {
 
 resource "aws_security_group" "gitlab" {
   name_prefix = "${var.project_name}-gitlab-"
+  description = "Security group for GitLab EC2 instance"
   vpc_id      = aws_vpc.main.id
 
   ingress {

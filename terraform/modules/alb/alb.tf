@@ -1,9 +1,11 @@
 resource "aws_lb" "gitlab" {
-  name               = "${var.project_name}-alb"
-  internal           = true
-  load_balancer_type = "application"
-  security_groups    = [var.security_group_id]
-  subnets            = var.subnet_ids
+  name                       = "${var.project_name}-alb"
+  internal                   = true
+  load_balancer_type         = "application"
+  security_groups            = [var.security_group_id]
+  subnets                    = var.subnet_ids
+  enable_deletion_protection = true
+  drop_invalid_header_fields = true
 
   access_logs {
     bucket  = aws_s3_bucket.alb_logs.id

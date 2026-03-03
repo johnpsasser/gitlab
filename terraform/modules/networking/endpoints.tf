@@ -81,9 +81,11 @@ resource "aws_vpc_endpoint" "logs" {
 # Security group for VPC endpoints
 resource "aws_security_group" "vpc_endpoints" {
   name_prefix = "${var.project_name}-vpc-endpoints-"
+  description = "Security group for VPC interface endpoints"
   vpc_id      = aws_vpc.main.id
 
   ingress {
+    description = "HTTPS from VPC for AWS service endpoints"
     from_port   = 443
     to_port     = 443
     protocol    = "tcp"
