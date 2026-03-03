@@ -17,3 +17,11 @@ output "private_subnet_ids" {
 output "nat_gateway_id" {
   value = aws_nat_gateway.main.id
 }
+
+output "alb_security_group_id" {
+  value = aws_security_group.alb.id
+}
+
+output "gitlab_security_group_id" {
+  value = aws_security_group.gitlab.id
+}
