@@ -52,6 +52,7 @@ resource "aws_instance" "gitlab" {
 
 # Separate data volume for /var/opt/gitlab
 resource "aws_ebs_volume" "data" {
+  #checkov:skip=CKV_AWS_189:EBS KMS CMK — default aws/ebs key provides encryption at rest
   availability_zone = aws_instance.gitlab.availability_zone
   size              = var.data_volume_size
   type              = "gp3"

@@ -49,6 +49,8 @@ resource "aws_s3_bucket_public_access_block" "terraform_state" {
 }
 
 resource "aws_dynamodb_table" "terraform_locks" {
+  #checkov:skip=CKV_AWS_28:DynamoDB PITR not needed for Terraform lock table
+  #checkov:skip=CKV_AWS_119:DynamoDB KMS CMK not needed for lock table (uses AWS-owned key)
   name         = "${var.project_name}-terraform-locks"
   billing_mode = "PAY_PER_REQUEST"
   hash_key     = "LockID"

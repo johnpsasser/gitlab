@@ -1,42 +1,12 @@
 # Checkov configuration
-# Skip rules that are documented accepted risks
+# Global skips that cannot be scoped to individual resources
 skip-check:
-  # S3 access logging on log buckets creates circular dependency
-  - CKV_AWS_18
-  # S3 cross-region replication not needed for log/state buckets (backups handled separately)
-  - CKV_AWS_144
-  # S3 event notifications not required for this deployment
-  - CKV2_AWS_62
-  # ALB log bucket must use AES256 (ALB doesn't support KMS for access logs)
-  - CKV_AWS_145
-  # S3 versioning not needed for append-only log buckets
-  - CKV_AWS_21
-  # Secrets rotation requires Lambda — managed operationally, not via Terraform
-  - CKV2_AWS_57
-  # DynamoDB PITR not needed for Terraform lock table
-  - CKV_AWS_28
-  # DynamoDB KMS CMK not needed for lock table (uses AWS-owned key)
-  - CKV_AWS_119
-  # CloudTrail SNS topic not needed — alarms handled via CloudWatch
-  - CKV_AWS_252
-  # CloudTrail CloudWatch Logs integration handled separately
-  - CKV2_AWS_10
-  # CloudTrail KMS CMK — using S3 SSE-KMS already
-  - CKV_AWS_35
-  # Single-region CloudTrail is intentional for this deployment
-  - CKV_AWS_67
-  # S3 lifecycle abort incomplete multipart — low risk for these buckets
-  - CKV_AWS_300
   # Security groups ARE attached via module references (Checkov can't trace cross-module)
   - CKV2_AWS_5
-  # Terraform state bucket lifecycle managed via bootstrap, not main config
-  - CKV2_AWS_61
   # Default VPC security group — managed by AWS, not in scope
   - CKV2_AWS_12
-  # Secrets Manager KMS CMK — default aws/secretsmanager key is sufficient
-  - CKV_AWS_149
-  # EBS KMS CMK — default aws/ebs key provides encryption at rest
-  - CKV_AWS_189
+  # Terraform state bucket lifecycle managed via bootstrap, not main config
+  - CKV2_AWS_61
 framework:
   - terraform
 compact: true

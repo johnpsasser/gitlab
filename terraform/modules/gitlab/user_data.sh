@@ -32,8 +32,23 @@ OAUTH_CLIENT_ID=$(get_secret "$PROJECT/oauth/client-id")
 OAUTH_CLIENT_SECRET=$(get_secret "$PROJECT/oauth/client-secret")
 TAILSCALE_AUTH_KEY=$(get_secret "$PROJECT/tailscale/auth-key")
 
-# Format and mount data volume
+# Wait for EBS data volume to attach
 DATA_DEVICE="/dev/nvme1n1"
+echo "Waiting for data volume $DATA_DEVICE to be available..."
+ATTEMPTS=0
+MAX_ATTEMPTS=60
+while [ ! -b "$DATA_DEVICE" ] && [ $ATTEMPTS -lt $MAX_ATTEMPTS ]; do
+  sleep 5
+  ATTEMPTS=$((ATTEMPTS + 1))
+  echo "  Waiting for $DATA_DEVICE... attempt $ATTEMPTS/$MAX_ATTEMPTS"
+done
+
+if [ ! -b "$DATA_DEVICE" ]; then
+  echo "ERROR: Data volume $DATA_DEVICE did not appear after $((MAX_ATTEMPTS * 5)) seconds"
+  exit 1
+fi
+
+# Format and mount data volume
 if ! blkid "$DATA_DEVICE" > /dev/null 2>&1; then
   mkfs.xfs "$DATA_DEVICE"
 fi

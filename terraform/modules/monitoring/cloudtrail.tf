@@ -1,6 +1,10 @@
 data "aws_caller_identity" "current" {}
 
 resource "aws_cloudtrail" "main" {
+  #checkov:skip=CKV_AWS_252:CloudTrail SNS topic not needed — alarms handled via CloudWatch
+  #checkov:skip=CKV2_AWS_10:CloudTrail CloudWatch Logs integration handled separately
+  #checkov:skip=CKV_AWS_35:CloudTrail KMS CMK — using S3 SSE-KMS already
+  #checkov:skip=CKV_AWS_67:Single-region CloudTrail is intentional for this deployment
   name                          = "${var.project_name}-trail"
   s3_bucket_name                = aws_s3_bucket.cloudtrail.id
   is_multi_region_trail         = false
