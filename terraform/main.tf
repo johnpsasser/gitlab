@@ -88,6 +88,18 @@ module "alb" {
   s3_access_logs_bucket_id = module.networking.s3_access_logs_bucket_id
 }
 
+# --- DNS (Route53 Subdomain Delegation) ---
+module "dns" {
+  source = "./modules/dns"
+
+  project_name                  = var.project_name
+  domain_name                   = var.domain_name
+  alb_dns_name                  = module.alb.alb_dns_name
+  alb_zone_id                   = module.alb.alb_zone_id
+  acm_certificate_arn           = module.alb.acm_certificate_arn
+  acm_domain_validation_options = module.alb.acm_domain_validation_options
+}
+
 # --- WAF ---
 module "waf" {
   source       = "./modules/waf"

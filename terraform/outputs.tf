@@ -28,9 +28,9 @@ output "ssm_connect_command" {
   value       = "aws ssm start-session --target ${module.gitlab.instance_id}"
 }
 
-output "acm_validation_records" {
-  description = "DNS validation records for ACM certificate (create these in Cloudflare)"
-  value       = module.alb.acm_validation_records
+output "route53_nameservers" {
+  description = "Route53 nameservers -- add these as NS records in the parent zone for subdomain delegation"
+  value       = module.dns.nameservers
 }
 
 output "sns_topic_arn" {

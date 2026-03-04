@@ -13,15 +13,14 @@ output "alb_arn" {
   value       = aws_lb.gitlab.arn
 }
 
-output "acm_validation_records" {
-  description = "DNS validation records to create in Cloudflare for ACM certificate"
-  value = {
-    for dvo in aws_acm_certificate.gitlab.domain_validation_options : dvo.domain_name => {
-      name  = dvo.resource_record_name
-      type  = dvo.resource_record_type
-      value = dvo.resource_record_value
-    }
-  }
+output "acm_certificate_arn" {
+  description = "ARN of the ACM certificate"
+  value       = aws_acm_certificate.gitlab.arn
+}
+
+output "acm_domain_validation_options" {
+  description = "ACM certificate domain validation options for Route53"
+  value       = aws_acm_certificate.gitlab.domain_validation_options
 }
 
 output "alb_arn_suffix" {
