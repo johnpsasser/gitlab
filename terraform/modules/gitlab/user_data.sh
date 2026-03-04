@@ -15,6 +15,12 @@ dnf install -y curl policycoreutils perl postfix jq
 # Start and enable services
 systemctl enable --now postfix
 
+# Disable and remove SSH daemon (AC-17, CM-7)
+# All access is via SSM Session Manager -- SSH is not needed
+systemctl stop sshd 2>/dev/null || true
+systemctl disable sshd 2>/dev/null || true
+dnf remove -y openssh-server 2>/dev/null || true
+
 # Fetch secrets from Secrets Manager
 get_secret() {
   aws secretsmanager get-secret-value \
@@ -52,6 +58,9 @@ mount "$DATA_DEVICE" /var/opt/gitlab
 echo "$DATA_DEVICE /var/opt/gitlab xfs defaults,nofail 0 2" >> /etc/fstab
 
 # Install GitLab CE
+# NOTE: curl-pipe-bash is an accepted supply chain risk for this deployment.
+# Mitigation: HTTPS-only, GitLab's official repo, VPC egress restricted.
+# For higher assurance, consider pre-baking a golden AMI with GitLab installed.
 curl -sS https://packages.gitlab.com/install/repositories/gitlab/gitlab-ce/script.rpm.sh | bash
 dnf install -y gitlab-ce
 

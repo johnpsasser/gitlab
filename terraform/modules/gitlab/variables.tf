@@ -68,3 +68,9 @@ variable "enable_backup_replication" {
   type        = bool
   default     = false
 }
+
+variable "sns_topic_arn" {
+  description = "SNS topic ARN for patching notifications"
+  type        = string
+  default     = ""
+}

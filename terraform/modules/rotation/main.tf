@@ -208,3 +208,26 @@ resource "aws_secretsmanager_secret_rotation" "root_password" {
 
   depends_on = [aws_lambda_permission.secrets_manager]
 }
+
+# --- Lambda Error Alarm ---
+
+resource "aws_cloudwatch_metric_alarm" "lambda_errors" {
+  alarm_name          = "${var.project_name}-rotation-lambda-errors"
+  comparison_operator = "GreaterThanThreshold"
+  evaluation_periods  = 1
+  metric_name         = "Errors"
+  namespace           = "AWS/Lambda"
+  period              = 300
+  statistic           = "Sum"
+  threshold           = 0
+  alarm_description   = "Secrets rotation Lambda function errors"
+  alarm_actions       = [var.sns_topic_arn]
+
+  dimensions = {
+    FunctionName = aws_lambda_function.rotation.function_name
+  }
+
+  tags = {
+    Name = "${var.project_name}-rotation-error-alarm"
+  }
+}

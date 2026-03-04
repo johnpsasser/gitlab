@@ -152,6 +152,9 @@ resource "aws_iam_role_policy" "replication" {
 
 # Replica bucket (in replication region)
 resource "aws_s3_bucket" "backup_replica" {
+  #checkov:skip=CKV_AWS_18:Access logging not configured for replica bucket in secondary region (no log target)
+  #checkov:skip=CKV2_AWS_62:S3 event notifications not required for backup replica
+  #checkov:skip=CKV_AWS_144:Cross-region replication not needed on the replica itself
   count    = var.enable_backup_replication ? 1 : 0
   provider = aws.replication
 
@@ -193,6 +196,64 @@ resource "aws_s3_bucket_public_access_block" "backup_replica" {
   block_public_policy     = true
   ignore_public_acls      = true
   restrict_public_buckets = true
+}
+
+resource "aws_s3_bucket_lifecycle_configuration" "backup_replica" {
+  count    = var.enable_backup_replication ? 1 : 0
+  provider = aws.replication
+  bucket   = aws_s3_bucket.backup_replica[0].id
+
+  rule {
+    id     = "archive"
+    status = "Enabled"
+    filter {}
+
+    transition {
+      days          = 30
+      storage_class = "GLACIER"
+    }
+
+    expiration {
+      days = 365
+    }
+  }
+
+  rule {
+    id     = "abort-incomplete-uploads"
+    status = "Enabled"
+    filter {}
+
+    abort_incomplete_multipart_upload {
+      days_after_initiation = 7
+    }
+  }
+}
+
+resource "aws_s3_bucket_policy" "backup_replica" {
+  count    = var.enable_backup_replication ? 1 : 0
+  provider = aws.replication
+  bucket   = aws_s3_bucket.backup_replica[0].id
+
+  policy = jsonencode({
+    Version = "2012-10-17"
+    Statement = [
+      {
+        Sid       = "DenyInsecureTransport"
+        Effect    = "Deny"
+        Principal = "*"
+        Action    = "s3:*"
+        Resource = [
+          aws_s3_bucket.backup_replica[0].arn,
+          "${aws_s3_bucket.backup_replica[0].arn}/*"
+        ]
+        Condition = {
+          Bool = {
+            "aws:SecureTransport" = "false"
+          }
+        }
+      }
+    ]
+  })
 }
 
 # Replication configuration on the source bucket

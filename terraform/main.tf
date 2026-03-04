@@ -73,6 +73,7 @@ module "gitlab" {
   use_fips_ami              = var.use_fips_ami
   enable_backup_replication = var.enable_backup_replication
   backup_replication_region = var.backup_replication_region
+  sns_topic_arn             = module.monitoring.sns_topic_arn
 }
 
 # --- ALB ---

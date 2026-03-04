@@ -81,6 +81,10 @@ resource "aws_ssm_maintenance_window_task" "patch_scan_and_install" {
         name   = "Operation"
         values = ["Install"]
       }
+      parameter {
+        name   = "RebootOption"
+        values = ["RebootIfNeeded"]
+      }
     }
   }
 }
