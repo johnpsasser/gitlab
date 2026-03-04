@@ -122,93 +122,30 @@
 </head>
 <body>
   <h1>GitLab Quick Start Guide</h1>
-  <p class="subtitle">Developer onboarding for the internal GitLab instance</p>
+  <p class="subtitle">Developer onboarding for the GitLab instance</p>
 
   <h2>1. Prerequisites</h2>
   <div class="prereq">
     <p>Before you begin, ensure you have:</p>
     <ul>
       <li>A <strong>Google Workspace</strong> account on <code>@fedrock.com</code></li>
-      <li><strong>Tailscale</strong> installed (see step 2 &mdash; sign in with your <code>@fedrock.com</code> Google account)</li>
       <li><strong>Git</strong> installed on your machine</li>
-      <li><strong>DNS</strong> is managed via Cloudflare — no action needed from developers</li>
     </ul>
   </div>
 
-  <h2>2. Install &amp; Connect Tailscale</h2>
-  <p>Tailscale provides VPN access to the GitLab instance. There is no other way to reach it &mdash; the server has no public endpoint.</p>
-
-  <h3>Install</h3>
-  <table>
-    <tr><th>Platform</th><th>Install</th></tr>
-    <tr><td>macOS</td><td><a href="https://tailscale.com/download/mac">Download from Tailscale</a> or <code>brew install --cask tailscale</code></td></tr>
-    <tr><td>Linux</td><td><a href="https://tailscale.com/download/linux">Install script</a>: <code>curl -fsSL https://tailscale.com/install.sh | sh</code></td></tr>
-    <tr><td>Windows</td><td><a href="https://tailscale.com/download/windows">Download from Tailscale</a></td></tr>
-  </table>
-
-  <h3>Sign in</h3>
+  <h2>2. Connect to GitLab</h2>
   <ol>
-    <li>Open the Tailscale app</li>
-    <li>Click <strong>"Sign in"</strong></li>
-    <li>Choose <strong>"Sign in with Google"</strong></li>
-    <li>Use your <strong><code>@fedrock.com</code></strong> Google Workspace account</li>
-    <li>You'll automatically join the <strong>fedrock.com</strong> tailnet &mdash; no invite code needed</li>
-  </ol>
-  <p>You should see a green "Connected" status in your menu bar / system tray.</p>
-
-  <div class="note">
-    <strong>Important:</strong> You must sign in with your <code>@fedrock.com</code> Google account, not a personal Google account. The tailnet is tied to the fedrock.com domain.
-  </div>
-
-  <h2>3. Connect to GitLab</h2>
-  <ol>
-    <li>Ensure Tailscale is connected (check the icon in your menu bar/system tray)</li>
     <li>Open your browser and navigate to: <pre><code>https://code.fedrock.com</code><button class="copy-btn" onclick="copyCode(this)">Copy</button></pre></li>
     <li>Click <strong>"Sign in with Google"</strong></li>
-    <li>Authenticate with your Google Workspace account</li>
+    <li>Authenticate with your <strong><code>@fedrock.com</code></strong> Google Workspace account</li>
     <li>You'll be redirected to your GitLab dashboard</li>
   </ol>
   <div class="note">
     <strong>First time?</strong> Your account is created automatically on first sign-in. You'll have a "Regular" role by default. Ask your admin to grant additional permissions if needed.
   </div>
 
-  <h2>4. Set Up Your SSH Key</h2>
-  <h3><span class="step-number">1</span>Generate an SSH key (if you don't have one)</h3>
-  <pre><code>ssh-keygen -t ed25519 -C "your.name@fedrock.com"</code><button class="copy-btn" onclick="copyCode(this)">Copy</button></pre>
-  <p>Press Enter to accept the default file location. Set a passphrase when prompted.</p>
-
-  <h3><span class="step-number">2</span>Copy your public key</h3>
-  <pre><code># macOS
-pbcopy &lt; ~/.ssh/id_ed25519.pub
-
-# Linux
-xclip -selection clipboard &lt; ~/.ssh/id_ed25519.pub
-
-# Windows (PowerShell)
-Get-Content ~/.ssh/id_ed25519.pub | Set-Clipboard</code><button class="copy-btn" onclick="copyCode(this)">Copy</button></pre>
-
-  <h3><span class="step-number">3</span>Add the key to GitLab</h3>
-  <ol>
-    <li>Go to <strong>GitLab &rarr; User Settings &rarr; SSH Keys</strong> (click your avatar, top-right)</li>
-    <li>Paste your public key into the <strong>"Key"</strong> field</li>
-    <li>Give it a descriptive <strong>Title</strong> (e.g., "Work MacBook")</li>
-    <li>Click <strong>"Add key"</strong></li>
-  </ol>
-
-  <h3><span class="step-number">4</span>Configure SSH</h3>
-  <p>Add the following to <code>~/.ssh/config</code>:</p>
-  <pre><code>Host code.fedrock.com
-  HostName code.fedrock.com
-  User git
-  IdentityFile ~/.ssh/id_ed25519
-  AddKeysToAgent yes</code><button class="copy-btn" onclick="copyCode(this)">Copy</button></pre>
-
-  <h3><span class="step-number">5</span>Test the connection</h3>
-  <pre><code>ssh -T git@code.fedrock.com</code><button class="copy-btn" onclick="copyCode(this)">Copy</button></pre>
-  <p>You should see: <code>Welcome to GitLab, @yourusername!</code></p>
-
-  <h2>5. Create a Personal Access Token</h2>
-  <p>Personal access tokens are used for HTTPS Git operations and API access.</p>
+  <h2>3. Create a Personal Access Token</h2>
+  <p>Personal access tokens are used for Git operations over HTTPS and API access.</p>
   <ol>
     <li>Go to <strong>User Settings &rarr; Access Tokens</strong></li>
     <li>Click <strong>"Add new token"</strong></li>
@@ -228,11 +165,7 @@ Get-Content ~/.ssh/id_ed25519.pub | Set-Clipboard</code><button class="copy-btn"
     <strong>Store your token securely.</strong> Use a password manager or your OS keychain. Never commit tokens to version control.
   </div>
 
-  <h2>6. Clone Your First Repository</h2>
-  <h3>Via SSH (recommended)</h3>
-  <pre><code>git clone git@code.fedrock.com:your-group/your-project.git</code><button class="copy-btn" onclick="copyCode(this)">Copy</button></pre>
-
-  <h3>Via HTTPS (with personal access token)</h3>
+  <h2>4. Clone Your First Repository</h2>
   <pre><code>git clone https://code.fedrock.com/your-group/your-project.git
 # When prompted for password, use your Personal Access Token</code><button class="copy-btn" onclick="copyCode(this)">Copy</button></pre>
 
@@ -243,24 +176,16 @@ git config --global credential.helper osxkeychain
 # Linux (stores in memory for 1 hour)
 git config --global credential.helper 'cache --timeout=3600'</code><button class="copy-btn" onclick="copyCode(this)">Copy</button></pre>
 
-  <h2>7. Troubleshooting</h2>
+  <h2>5. Troubleshooting</h2>
   <table>
     <tr><th>Problem</th><th>Solution</th></tr>
     <tr>
       <td><strong>Can't reach GitLab URL</strong></td>
-      <td>Check that Tailscale is connected. Try <code>tailscale status</code> in your terminal. If disconnected, run <code>tailscale up</code>.</td>
+      <td>Verify your internet connection. If the issue persists, check with your admin to confirm the service is running.</td>
     </tr>
     <tr>
       <td><strong>Google OAuth redirect error</strong></td>
       <td>Ensure you're signing in with your <strong>@fedrock.com</strong> Google account, not a personal one. Clear your browser cookies for the GitLab domain and try again.</td>
-    </tr>
-    <tr>
-      <td><strong>"Permission denied (publickey)"</strong></td>
-      <td>Verify your SSH key is added to GitLab. Run <code>ssh-add -l</code> to check loaded keys. If empty, run <code>ssh-add ~/.ssh/id_ed25519</code>.</td>
-    </tr>
-    <tr>
-      <td><strong>SSH key format not accepted</strong></td>
-      <td>GitLab supports ED25519, RSA (2048+ bits), and ECDSA keys. If using an older RSA key, ensure it's at least 2048 bits: <code>ssh-keygen -l -f ~/.ssh/id_rsa</code></td>
     </tr>
     <tr>
       <td><strong>HTTPS clone asks for username</strong></td>
@@ -268,7 +193,7 @@ git config --global credential.helper 'cache --timeout=3600'</code><button class
     </tr>
     <tr>
       <td><strong>SSL certificate error</strong></td>
-      <td>The GitLab instance uses a valid ACM certificate. If you see SSL errors, your Tailscale connection may have dropped. Reconnect and retry.</td>
+      <td>The GitLab instance uses a valid ACM certificate. If you see SSL errors, try clearing your browser cache or check with your admin.</td>
     </tr>
     <tr>
       <td><strong>"403 Forbidden" on git push</strong></td>
@@ -277,7 +202,7 @@ git config --global credential.helper 'cache --timeout=3600'</code><button class
   </table>
 
   <footer>
-    <p>Internal use only. For support, contact your GitLab administrator.</p>
+    <p>For support, contact your GitLab administrator.</p>
   </footer>
 
   <script>

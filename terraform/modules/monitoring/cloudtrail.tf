@@ -19,6 +19,9 @@ resource "aws_cloudtrail" "main" {
 }
 
 resource "aws_s3_bucket" "cloudtrail" {
+  #checkov:skip=CKV2_AWS_62:S3 event notifications not required for CloudTrail log bucket
+  #checkov:skip=CKV_AWS_18:Access logging on log buckets creates circular dependency
+  #checkov:skip=CKV_AWS_144:Cross-region replication not needed — CloudTrail logs have file validation enabled
   bucket_prefix = "${var.project_name}-cloudtrail-"
 
   tags = {
@@ -59,6 +62,23 @@ resource "aws_s3_bucket_lifecycle_configuration" "cloudtrail" {
     expiration {
       days = 365
     }
+  }
+
+  rule {
+    id     = "abort-incomplete-uploads"
+    status = "Enabled"
+    filter {}
+
+    abort_incomplete_multipart_upload {
+      days_after_initiation = 7
+    }
+  }
+}
+
+resource "aws_s3_bucket_versioning" "cloudtrail" {
+  bucket = aws_s3_bucket.cloudtrail.id
+  versioning_configuration {
+    status = "Enabled"
   }
 }
 

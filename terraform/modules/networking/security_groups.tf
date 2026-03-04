@@ -4,11 +4,11 @@ resource "aws_security_group" "alb" {
   vpc_id      = aws_vpc.main.id
 
   ingress {
-    description = "HTTPS from VPC (Tailscale traffic)"
+    description = "HTTPS from internet"
     from_port   = 443
     to_port     = 443
     protocol    = "tcp"
-    cidr_blocks = [var.vpc_cidr]
+    cidr_blocks = ["0.0.0.0/0"]
   }
 
   tags = {
@@ -21,16 +21,8 @@ resource "aws_security_group" "gitlab" {
   description = "Security group for GitLab EC2 instance"
   vpc_id      = aws_vpc.main.id
 
-  ingress {
-    description = "SSH from VPC (Git over SSH via Tailscale)"
-    from_port   = 22
-    to_port     = 22
-    protocol    = "tcp"
-    cidr_blocks = [var.vpc_cidr]
-  }
-
   egress {
-    description = "HTTPS outbound (updates, Tailscale coordination)"
+    description = "HTTPS outbound (updates)"
     from_port   = 443
     to_port     = 443
     protocol    = "tcp"

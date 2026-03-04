@@ -1,6 +1,7 @@
 resource "aws_lb" "gitlab" {
+  #checkov:skip=CKV2_AWS_28:WAF association managed in modules/waf/waf.tf — checkov cannot resolve cross-module references
   name                       = "${var.project_name}-alb"
-  internal                   = true
+  internal                   = false
   load_balancer_type         = "application"
   security_groups            = [var.security_group_id]
   subnets                    = var.subnet_ids

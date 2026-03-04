@@ -17,6 +17,9 @@ variable "project_name" {
 }
 
 resource "aws_s3_bucket" "terraform_state" {
+  #checkov:skip=CKV2_AWS_62:S3 event notifications not needed for Terraform state bucket
+  #checkov:skip=CKV_AWS_18:Access logging not configured — bootstrap runs independently, no log target bucket
+  #checkov:skip=CKV_AWS_144:Cross-region replication not needed — state bucket has versioning enabled
   bucket = "${var.project_name}-terraform-state-${data.aws_caller_identity.current.account_id}"
 
   lifecycle {

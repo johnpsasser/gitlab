@@ -55,8 +55,15 @@ module "alb" {
   source             = "./modules/alb"
   project_name       = var.project_name
   vpc_id             = module.networking.vpc_id
-  subnet_ids         = module.networking.private_subnet_ids
+  subnet_ids         = module.networking.public_subnet_ids
   security_group_id  = module.networking.alb_security_group_id
   domain_name        = var.domain_name
   gitlab_instance_id = module.gitlab.instance_id
+}
+
+# --- WAF ---
+module "waf" {
+  source       = "./modules/waf"
+  project_name = var.project_name
+  alb_arn      = module.alb.alb_arn
 }

@@ -1,12 +1,12 @@
 # Self-Hosted GitLab on AWS
 
-Terraform infrastructure for deploying a self-hosted GitLab instance on AWS with a security-hardened network design aligned with DoD IL2 requirements. Access is provided exclusively through Tailscale VPN — there is no public-facing endpoint.
+Terraform infrastructure for deploying a self-hosted GitLab instance on AWS with a security-hardened network design aligned with DoD IL2 requirements. Developers access GitLab directly via HTTPS with Google OAuth authentication. The public ALB is protected by AWS WAF.
 
 ![Architecture Diagram](docs/architecture.png)
 
 ## Architecture Overview
 
-GitLab runs on a single EC2 instance inside private subnets with no direct internet ingress. Developers connect through Tailscale VPN to an internal Application Load Balancer, which terminates TLS 1.3 and forwards traffic to the GitLab instance over HTTP. Outbound internet access (for package updates and Tailscale coordination) is routed through a NAT Gateway in the public subnets.
+GitLab runs on a single EC2 instance inside private subnets. Developers connect over HTTPS to an internet-facing Application Load Balancer, which is protected by AWS WAF (OWASP common rules, known bad inputs, and rate limiting). The ALB terminates TLS 1.3 and forwards traffic to the GitLab instance over HTTP. Outbound internet access (for package updates) is routed through a NAT Gateway in the public subnets. Admin access to the instance is via SSM Session Manager only.
 
 AWS service access from the private subnets is handled via VPC endpoints (S3, SSM, Secrets Manager, CloudWatch Logs), minimizing traffic that traverses the NAT Gateway. All data is encrypted at rest using KMS or AES-256, and all S3 buckets have public access blocked with lifecycle policies that transition objects to Glacier.
 
@@ -34,18 +34,27 @@ EC2 instance, EBS volumes, IAM role, S3 backup bucket, and Secrets Manager secre
 - IMDSv2 enforced, detailed monitoring enabled
 - IAM instance profile with policies for SSM, S3 backups, Secrets Manager, and CloudWatch Logs
 - S3 backup bucket with versioning, KMS encryption, and Glacier lifecycle
-- Secrets Manager entries for root password, OAuth credentials, Tailscale auth key, and `gitlab-secrets.json`
+- Secrets Manager entries for root password, OAuth credentials, and `gitlab-secrets.json`
 
 ### `alb`
 
-Internal Application Load Balancer, target group, HTTPS listener, ACM certificate, and access logging.
+Internet-facing Application Load Balancer, target group, HTTPS listener, ACM certificate, and access logging.
 
-- Internal ALB spanning 2 private subnets
+- Internet-facing ALB spanning 2 public subnets
 - HTTPS listener on port 443 with TLS 1.3 policy (`ELBSecurityPolicy-TLS13-1-2-2021-06`)
 - ACM certificate with email validation
 - Target group forwarding HTTP port 80 with health checks on `/-/health`
 - Access logs to a dedicated S3 bucket with Glacier lifecycle
 - Deletion protection enabled
+
+### `waf`
+
+AWS WAF WebACL with managed rules and rate limiting.
+
+- OWASP common rules (AWS Managed Rules Common Rule Set)
+- Known bad inputs rule group
+- Rate limiting to protect against abuse
+- Associated with the internet-facing ALB
 
 ### `monitoring`
 
@@ -61,7 +70,6 @@ CloudTrail and CloudWatch alarms.
 - A domain name with DNS managed in Cloudflare
 - Cloudflare account with DNS zone for your domain
 - Google OAuth credentials (for GitLab SSO)
-- Tailscale auth key
 
 ## Usage
 
@@ -90,8 +98,7 @@ DNS is managed via Cloudflare, outside of Terraform. After deployment:
 2. In Cloudflare, create a CNAME record:
    - **Name:** `gitlab` (or your subdomain)
    - **Target:** The ALB DNS name from step 1
-   - **Proxy status:** DNS only (gray cloud) — traffic routes through Tailscale VPN, not Cloudflare proxy
-3. Since the ALB is internal, this DNS record is only resolvable when connected via Tailscale
+   - **Proxy status:** Proxied (orange cloud) — since the ALB is internet-facing, Cloudflare proxy mode can be enabled for additional DDoS protection and caching
 
 ## Outputs
 
@@ -99,7 +106,7 @@ DNS is managed via Cloudflare, outside of Terraform. After deployment:
 |--------|-------------|
 | `gitlab_instance_id` | EC2 instance ID |
 | `gitlab_private_ip` | Private IP address |
-| `alb_dns_name` | Internal ALB DNS name |
+| `alb_dns_name` | ALB DNS name |
 | `gitlab_url` | GitLab URL (`https://<domain>`) |
 | `backup_bucket` | S3 backup bucket name |
 | `ssm_connect_command` | SSM session command |

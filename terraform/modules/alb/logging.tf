@@ -5,7 +5,6 @@ resource "aws_s3_bucket" "alb_logs" {
   #checkov:skip=CKV_AWS_18:Access logging on log buckets creates circular dependency
   #checkov:skip=CKV_AWS_21:S3 versioning not needed for append-only log buckets
   #checkov:skip=CKV_AWS_144:S3 cross-region replication not needed for log buckets (backups handled separately)
-  #checkov:skip=CKV_AWS_300:S3 lifecycle abort incomplete multipart — low risk for log buckets
   #checkov:skip=CKV2_AWS_62:S3 event notifications not required for this deployment
   bucket_prefix = "${var.project_name}-alb-logs-"
 
@@ -46,6 +45,16 @@ resource "aws_s3_bucket_lifecycle_configuration" "alb_logs" {
 
     expiration {
       days = 365
+    }
+  }
+
+  rule {
+    id     = "abort-incomplete-uploads"
+    status = "Enabled"
+    filter {}
+
+    abort_incomplete_multipart_upload {
+      days_after_initiation = 7
     }
   }
 }

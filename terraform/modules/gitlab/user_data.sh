@@ -30,7 +30,7 @@ get_secret() {
 ROOT_PASSWORD=$(get_secret "$PROJECT/root-password")
 OAUTH_CLIENT_ID=$(get_secret "$PROJECT/oauth/client-id")
 OAUTH_CLIENT_SECRET=$(get_secret "$PROJECT/oauth/client-secret")
-TAILSCALE_AUTH_KEY=$(get_secret "$PROJECT/tailscale/auth-key")
+
 
 # Wait for EBS data volume to attach
 DATA_DEVICE="/dev/nvme1n1"
@@ -132,12 +132,6 @@ cat > /etc/cron.d/gitlab-backup << 'CRON'
 0 2 * * * root /opt/gitlab/bin/gitlab-backup create STRATEGY=copy CRON=1
 15 2 * * * root tar czf /var/opt/gitlab/backups/gitlab-config-$(date +\%Y\%m\%d).tar.gz /etc/gitlab/
 CRON
-
-# Install and configure Tailscale
-curl -fsSL https://tailscale.com/install.sh | sh
-if [ -n "$TAILSCALE_AUTH_KEY" ]; then
-  tailscale up --auth-key="$TAILSCALE_AUTH_KEY" --advertise-tags=tag:gitlab --ssh
-fi
 
 # Install CloudWatch agent for disk monitoring
 dnf install -y amazon-cloudwatch-agent

@@ -24,7 +24,7 @@ AWS commercial regions, including us-east-1, hold **FedRAMP High** Provisional A
 
 ### This Deployment
 
-This GitLab instance runs on a single EC2 instance in a private subnet with no public internet ingress. All user access is through a Tailscale VPN mesh, with an internal ALB handling TLS termination. Authentication is via Google OAuth with organization-restricted accounts. Infrastructure is fully defined in Terraform with Checkov policy scanning.
+This GitLab instance runs on a single EC2 instance in a private subnet with no public IP. User access is through a public-facing Application Load Balancer protected by AWS WAF, with TLS 1.3 termination at the ALB. AWS WAF enforces OWASP common rules, known bad input filtering, and rate limiting. Authentication is via Google OAuth with organization-restricted accounts. Git operations use HTTPS only with Personal Access Tokens (PATs); SSH access is not enabled. Admin access is via SSM Session Manager only. Infrastructure is fully defined in Terraform with Checkov policy scanning.
 
 ---
 
@@ -35,16 +35,17 @@ This GitLab instance runs on a single EC2 instance in a private subnet with no p
 | Control Area | Status | Implementation |
 |---|---|---|
 | AC-2 Account Management | Implemented | Google OAuth restricts login to organization domain (`google_oauth_hd` variable). GitLab RBAC manages project/group access. OAuth credentials stored in Secrets Manager (`modules/gitlab/secrets.tf`). |
-| AC-3 Access Enforcement | Implemented | Security groups restrict ALB ingress to VPC CIDR only (`modules/networking/security_groups.tf`, lines 6-12). EC2 instance accepts HTTP only from ALB SG (lines 72-80). IAM policies scoped to least privilege (`modules/gitlab/iam.tf`). |
-| AC-4 Information Flow | Implemented | Internal ALB with no public listener (`modules/alb/alb.tf`, `internal = true`). EC2 in private subnet routed through NAT Gateway (`modules/networking/vpc.tf`). VPC endpoints keep AWS API traffic off the internet (`modules/networking/endpoints.tf`). |
-| AC-7 Unsuccessful Logon | Partially Implemented | GitLab CE enforces account lockout after failed attempts (configurable in `gitlab.rb`). Tailscale requires device authorization before network access. |
-| AC-17 Remote Access | Implemented | All access requires Tailscale VPN (WireGuard). No public endpoints exist. Admin access via SSM Session Manager only -- no SSH keys (`modules/gitlab/iam.tf`, SSM policy attachment line 31). |
+| AC-3 Access Enforcement | Implemented | Security groups restrict ALB ingress to 0.0.0.0/0 on port 443 only, with AWS WAF filtering all requests before they reach the ALB (`modules/networking/security_groups.tf`). EC2 instance accepts HTTP only from ALB SG. No SSH (port 22) ingress permitted on EC2. IAM policies scoped to least privilege (`modules/gitlab/iam.tf`). |
+| AC-4 Information Flow | Implemented | Public ALB with AWS WAF and TLS 1.3 termination (`modules/alb/alb.tf`, `internal = false`). WAF applies OWASP common rules, known bad input filtering, and rate limiting before traffic reaches the ALB (`modules/waf/waf.tf`). EC2 in private subnet routed through NAT Gateway (`modules/networking/vpc.tf`). VPC endpoints keep AWS API traffic off the internet (`modules/networking/endpoints.tf`). |
+| AC-7 Unsuccessful Logon | Implemented | GitLab CE enforces account lockout after failed attempts (configurable in `gitlab.rb`). AWS WAF rate limiting (2000 requests per 5 minutes per IP) mitigates brute-force attacks at the network edge (`modules/waf/waf.tf`). |
+| AC-8 Login Banner | Gap | No DoD-required consent banner configured on the GitLab sign-in page. See residual gaps. |
+| AC-17 Remote Access | Implemented | All access via public HTTPS with Google OAuth authentication. TLS 1.3 enforced at the ALB (`ELBSecurityPolicy-TLS13-1-2-2021-06`). AWS WAF protects against common web exploits and rate-limits requests. Admin access via SSM Session Manager only -- no SSH keys (`modules/gitlab/iam.tf`, SSM policy attachment line 31). Git operations use HTTPS with Personal Access Tokens (PATs); no SSH access is exposed. |
 
 ### AU -- Audit and Accountability
 
 | Control Area | Status | Implementation |
 |---|---|---|
-| AU-2 Event Logging | Implemented | CloudTrail captures all AWS API calls (`modules/monitoring/cloudtrail.tf`). VPC Flow Logs capture all network traffic (`modules/networking/flow_logs.tf`). ALB access logs capture all HTTP requests (`modules/alb/logging.tf`). GitLab application audit events enabled in `gitlab.rb`. |
+| AU-2 Event Logging | Implemented | CloudTrail captures all AWS API calls (`modules/monitoring/cloudtrail.tf`). VPC Flow Logs capture all network traffic (`modules/networking/flow_logs.tf`). ALB access logs capture all HTTP requests (`modules/alb/logging.tf`). AWS WAF logs capture all evaluated requests. GitLab application audit events enabled in `gitlab.rb`. |
 | AU-3 Content of Audit Records | Implemented | CloudTrail records include who, what, when, where, and outcome for every API call. Log file validation enabled (`enable_log_file_validation = true`). |
 | AU-6 Audit Review/Analysis | Partially Implemented | Logs are collected and stored. CloudWatch alarms alert on instance health (`modules/monitoring/cloudwatch.tf`). **Gap**: No centralized SIEM for automated log correlation. |
 | AU-9 Protection of Audit Info | Implemented | All log buckets have public access blocked and KMS encryption (`modules/monitoring/cloudtrail.tf`, lines 38-44; `modules/networking/flow_logs.tf`, lines 35-41). CloudTrail bucket uses `aws:kms` SSE. |
@@ -57,7 +58,7 @@ This GitLab instance runs on a single EC2 instance in a private subnet with no p
 | CM-2 Baseline Configuration | Implemented | Entire infrastructure defined as Terraform IaC (`main.tf` and `modules/`). EC2 instance built from Amazon Linux 2023 AMI with templated `user_data.sh`. GitLab configured via `gitlab.rb` template. |
 | CM-3 Configuration Change Control | Implemented | All changes go through Terraform plan/apply workflow. Checkov scans enforce security policies pre-deploy. Git history provides full change audit trail. |
 | CM-6 Configuration Settings | Implemented | ALB enforces TLS 1.3 minimum (`ssl_policy = "ELBSecurityPolicy-TLS13-1-2-2021-06"` in `modules/alb/alb.tf`, line 53). IMDSv2 required on EC2 (`http_tokens = "required"` in `modules/gitlab/ec2.tf`, line 40). Invalid header fields dropped on ALB (`drop_invalid_header_fields = true`). |
-| CM-7 Least Functionality | Implemented | Security groups allow only required ports: 443 inbound on ALB, 80 from ALB to EC2, 22 from VPC for Git SSH (`modules/networking/security_groups.tf`). No unnecessary services exposed. |
+| CM-7 Least Functionality | Implemented | Security groups allow only required ports: 443 inbound on ALB (public, WAF-protected), 80 from ALB to EC2. No SSH (port 22) access is permitted on the GitLab EC2 instance. Git operations are HTTPS-only with PATs (`modules/networking/security_groups.tf`). No unnecessary services exposed. |
 
 ### CP -- Contingency Planning
 
@@ -73,25 +74,25 @@ This GitLab instance runs on a single EC2 instance in a private subnet with no p
 |---|---|---|
 | IA-2 User Identification | Implemented | Google OAuth enforces organization-specific accounts via `google_oauth_hd` domain restriction. OAuth credentials stored in Secrets Manager (`modules/gitlab/secrets.tf`, lines 8-20). |
 | IA-2(1) MFA | Implemented | Google Workspace enforces MFA at the IdP level. All GitLab logins go through Google OAuth, inheriting MFA enforcement. |
-| IA-5 Authenticator Management | Implemented | OAuth client secrets managed in AWS Secrets Manager. Tailscale auth keys managed in Secrets Manager (`modules/gitlab/secrets.tf`, lines 22-27). No static SSH keys for admin access (SSM used instead). |
+| IA-5 Authenticator Management | Implemented | OAuth client secrets managed in AWS Secrets Manager (`modules/gitlab/secrets.tf`). Git operations authenticated via HTTPS Personal Access Tokens (PATs) managed per-user in GitLab. No static SSH keys for admin access (SSM used instead). |
 | IA-8 Non-Org User ID | Implemented | Google OAuth `hd` parameter restricts login to organization domain only. No local GitLab account registration permitted. |
 
 ### IR -- Incident Response
 
 | Control Area | Status | Implementation |
 |---|---|---|
-| IR-4 Incident Handling | Partially Implemented | CloudWatch alarms on CPU (>90%) and status check failures (`modules/monitoring/cloudwatch.tf`). CloudTrail provides forensic investigation capability. **Gap**: No formal incident response plan documented. |
-| IR-5 Incident Monitoring | Partially Implemented | Logging infrastructure is in place (CloudTrail, Flow Logs, ALB logs). **Gap**: No automated alerting on security events or SIEM integration. |
+| IR-4 Incident Handling | Partially Implemented | CloudWatch alarms on CPU (>90%) and status check failures (`modules/monitoring/cloudwatch.tf`). CloudTrail provides forensic investigation capability. AWS WAF metrics and logs provide visibility into blocked threats. **Gap**: No formal incident response plan documented. |
+| IR-5 Incident Monitoring | Partially Implemented | Logging infrastructure is in place (CloudTrail, Flow Logs, ALB logs, WAF logs). **Gap**: No automated alerting on security events or SIEM integration. |
 | IR-6 Incident Reporting | Gap | No formal incident reporting procedures or contact lists documented. |
 
 ### SC -- System and Communications Protection
 
 | Control Area | Status | Implementation |
 |---|---|---|
-| SC-7 Boundary Protection | Implemented | EC2 in private subnets with no public IP (`modules/networking/vpc.tf`, lines 36-45). Internal ALB only (`modules/alb/alb.tf`, `internal = true`). ALB SG restricts ingress to VPC CIDR (`modules/networking/security_groups.tf`, lines 6-12). VPC endpoints eliminate internet traversal for AWS API calls (`modules/networking/endpoints.tf`). |
-| SC-8 Transmission Confidentiality | Implemented | ALB terminates TLS 1.3 (`ELBSecurityPolicy-TLS13-1-2-2021-06`). Tailscale uses WireGuard encryption for all VPN traffic. VPC endpoint traffic stays on AWS private network. |
+| SC-7 Boundary Protection | Implemented | EC2 in private subnets with no public IP (`modules/networking/vpc.tf`, lines 36-45). Public ALB with AWS WAF protection (`modules/alb/alb.tf`, `internal = false`; `modules/waf/waf.tf`). WAF enforces AWSManagedRulesCommonRuleSet (OWASP Top 10), AWSManagedRulesKnownBadInputsRuleSet, and rate limiting (2000 req/5min per IP). ALB deployed to public subnets; EC2 has no public IP and no direct internet ingress. VPC endpoints eliminate internet traversal for AWS API calls (`modules/networking/endpoints.tf`). |
+| SC-8 Transmission Confidentiality | Implemented | ALB terminates TLS 1.3 (`ELBSecurityPolicy-TLS13-1-2-2021-06`). All user and Git traffic encrypted via HTTPS. VPC endpoint traffic stays on AWS private network. |
 | SC-12 Cryptographic Key Management | Implemented | AWS KMS manages encryption keys for EBS (`modules/gitlab/ec2.tf`, `encrypted = true`), S3 buckets (`aws:kms` SSE), and Secrets Manager. ACM manages TLS certificates (`modules/alb/acm.tf`). |
-| SC-13 Cryptographic Protection | Implemented | FIPS mode enabled on Amazon Linux 2023. TLS 1.3 enforced on ALB. KMS encryption at rest for all data stores. WireGuard for data in transit over VPN. |
+| SC-13 Cryptographic Protection | Implemented | FIPS mode enabled on Amazon Linux 2023. TLS 1.3 enforced on ALB. KMS encryption at rest for all data stores. All data in transit encrypted via TLS 1.3 (HTTPS). |
 | SC-28 Protection of Information at Rest | Implemented | EBS root and data volumes encrypted (`modules/gitlab/ec2.tf`, lines 28, 59). All S3 buckets encrypted with KMS (backups, CloudTrail, flow logs) or AES-256 (ALB logs, which do not support KMS). Public access blocked on every bucket. |
 
 ### SI -- System and Information Integrity
@@ -100,7 +101,7 @@ This GitLab instance runs on a single EC2 instance in a private subnet with no p
 |---|---|---|
 | SI-2 Flaw Remediation | Partially Implemented | Amazon Linux 2023 provides security updates via `dnf`. EC2 user data can run updates at launch. **Gap**: No Amazon Inspector for automated vulnerability scanning. |
 | SI-3 Malicious Code Protection | Partially Implemented | Amazon Linux 2023 includes kernel-level protections. GitLab monitors uploaded content. **Gap**: No dedicated antimalware scanning. |
-| SI-4 System Monitoring | Implemented | CloudWatch detailed monitoring enabled (`monitoring = true` in `modules/gitlab/ec2.tf`, line 22). CPU and status check alarms configured (`modules/monitoring/cloudwatch.tf`). CloudTrail monitors API activity. VPC Flow Logs monitor network traffic. |
+| SI-4 System Monitoring | Implemented | CloudWatch detailed monitoring enabled (`monitoring = true` in `modules/gitlab/ec2.tf`, line 22). CPU and status check alarms configured (`modules/monitoring/cloudwatch.tf`). CloudTrail monitors API activity. VPC Flow Logs monitor network traffic. AWS WAF metrics provide visibility into blocked requests and attack patterns. |
 | SI-5 Security Alerts | Partially Implemented | CloudWatch alarms provide operational alerts. **Gap**: No subscription to US-CERT/CISA advisories or automated advisory ingestion. |
 
 ---
@@ -127,7 +128,7 @@ This GitLab instance runs on a single EC2 instance in a private subnet with no p
 | 2 | No centralized log analysis / SIEM | AU-6, SI-4 | High | Deploy Amazon OpenSearch or integrate with a SIEM (e.g., Splunk, Elastic). Create CloudWatch Logs Insights queries for security events. |
 | 3 | No vulnerability scanning | SI-2, RA-5 | High | Enable Amazon Inspector on the GitLab EC2 instance for continuous CVE scanning. Add Terraform resource for `aws_inspector2_enabler`. |
 | 4 | No formal System Security Plan (SSP) | PL-2 | High | Document the SSP per NIST 800-18 format. This compliance mapping serves as a starting point but does not replace a formal SSP. |
-| 5 | No login banner | AC-8 | Medium | Configure GitLab sign-in page banner and SSH pre-auth banner in `gitlab.rb` with DoD-required consent text. |
+| 5 | No login banner | AC-8 | Medium | Configure GitLab sign-in page banner in `gitlab.rb` with DoD-required consent text. |
 | 6 | No security awareness training program | AT-2 | Medium | Establish annual security awareness training for all users. Document completion records. |
 | 7 | No inactive account deprovisioning | AC-2(3) | Medium | Configure GitLab to deactivate accounts after 90 days of inactivity. Automate with a scheduled rake task or API script. |
 | 8 | No automated advisory ingestion | SI-5 | Low | Subscribe to CISA alerts and AWS Security Bulletins. Route to an ops channel. |
@@ -149,9 +150,10 @@ This GitLab instance runs on a single EC2 instance in a private subnet with no p
 | Security Groups | `modules/networking/security_groups.tf` | AC-3, AC-4, SC-7 (least-privilege network rules) |
 | VPC Endpoints | `modules/networking/endpoints.tf` | SC-7, SC-8 (private AWS API access) |
 | VPC Flow Logs | `modules/networking/flow_logs.tf` | AU-2, AU-9 (network traffic logging) |
-| ALB | `modules/alb/alb.tf` | SC-7, SC-8 (internal ALB, TLS 1.3) |
+| ALB | `modules/alb/alb.tf` | SC-7, SC-8 (public ALB, TLS 1.3) |
 | ALB Logging | `modules/alb/logging.tf` | AU-2 (HTTP access logs) |
 | ACM Certificate | `modules/alb/acm.tf` | SC-12 (TLS certificate management) |
+| WAF | `modules/waf/waf.tf` | AC-4, AC-7, SC-7 (OWASP rules, rate limiting, known bad inputs) |
 | EC2 Instance | `modules/gitlab/ec2.tf` | CM-6 (IMDSv2, encrypted volumes, FIPS) |
 | IAM | `modules/gitlab/iam.tf` | AC-3, AC-6 (least-privilege IAM policies) |
 | Secrets | `modules/gitlab/secrets.tf` | IA-5, SC-28 (credential management) |
