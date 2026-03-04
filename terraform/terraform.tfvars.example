@@ -22,4 +22,4 @@ backup_replication_region = "us-west-2"
 data_classification = "IL2"
 
 # Email for CloudWatch alarm notifications (must confirm subscription)
-# alert_email = "admin@yourcompany.com"
+alert_email = "admin@yourcompany.com"

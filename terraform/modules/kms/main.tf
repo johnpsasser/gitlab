@@ -64,6 +64,10 @@ resource "aws_kms_key" "general" {
     Name    = "${var.project_name}-general"
     Purpose = "General encryption (S3, Secrets Manager, etc.)"
   }
+
+  lifecycle {
+    prevent_destroy = true
+  }
 }
 
 resource "aws_kms_alias" "general" {
@@ -86,6 +90,10 @@ resource "aws_kms_key" "cloudtrail" {
   tags = {
     Name    = "${var.project_name}-cloudtrail"
     Purpose = "CloudTrail log encryption"
+  }
+
+  lifecycle {
+    prevent_destroy = true
   }
 }
 
@@ -244,6 +252,10 @@ resource "aws_kms_key" "ebs" {
   tags = {
     Name    = "${var.project_name}-ebs"
     Purpose = "EBS volume encryption"
+  }
+
+  lifecycle {
+    prevent_destroy = true
   }
 }
 

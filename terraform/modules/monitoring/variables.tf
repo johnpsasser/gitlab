@@ -19,9 +19,8 @@ variable "cloudtrail_kms_key_arn" {
 }
 
 variable "alert_email" {
-  description = "Email address for SNS alarm notifications (empty to skip subscription)"
+  description = "Email address for SNS alarm notifications (must confirm subscription after apply)"
   type        = string
-  default     = ""
 }
 
 variable "alb_arn_suffix" {

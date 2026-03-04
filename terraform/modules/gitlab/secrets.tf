@@ -3,6 +3,10 @@ resource "aws_secretsmanager_secret" "root_password" {
   name       = "${var.project_name}/root-password"
   kms_key_id = var.kms_key_id
   tags       = { Name = "${var.project_name}-root-password" }
+
+  lifecycle {
+    prevent_destroy = true
+  }
 }
 
 resource "aws_secretsmanager_secret" "gitlab_secrets_json" {
@@ -14,4 +18,8 @@ resource "aws_secretsmanager_secret" "gitlab_secrets_json" {
   description = "Backup of /etc/gitlab/gitlab-secrets.json"
   kms_key_id  = var.kms_key_id
   tags        = { Name = "${var.project_name}-secrets-json" }
+
+  lifecycle {
+    prevent_destroy = true
+  }
 }

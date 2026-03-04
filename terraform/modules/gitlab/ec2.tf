@@ -52,6 +52,7 @@ resource "aws_instance" "gitlab" {
   tags = {
     Name       = "${var.project_name}-ec2"
     PatchGroup = var.project_name
+    Backup     = "true"
   }
 
   lifecycle {
@@ -68,7 +69,8 @@ resource "aws_ebs_volume" "data" {
   kms_key_id        = var.ebs_kms_key_id
 
   tags = {
-    Name = "${var.project_name}-data"
+    Name   = "${var.project_name}-data"
+    Backup = "true"
   }
 
   lifecycle {

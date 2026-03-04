@@ -83,7 +83,11 @@ variable "enable_backup_replication" {
 }
 
 variable "alert_email" {
-  description = "Email address for SNS alarm notifications"
+  description = "Email address for SNS alarm notifications (must confirm subscription after apply)"
   type        = string
-  default     = ""
+
+  validation {
+    condition     = can(regex("^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\\.[a-zA-Z]{2,}$", var.alert_email))
+    error_message = "alert_email must be a valid email address."
+  }
 }

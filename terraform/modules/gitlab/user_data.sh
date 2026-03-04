@@ -57,7 +57,7 @@ dnf install -y gitlab-ce
 
 # Generate self-signed certificate for internal ALB-to-EC2 TLS (SC-8)
 mkdir -p /etc/gitlab/ssl
-openssl req -new -newkey rsa:4096 -days 3650 -nodes -x509 \
+openssl req -new -newkey rsa:4096 -days 365 -nodes -x509 \
   -subj "/C=US/ST=Virginia/L=Arlington/O=$PROJECT/CN=$DOMAIN" \
   -keyout "/etc/gitlab/ssl/$DOMAIN.key" \
   -out "/etc/gitlab/ssl/$DOMAIN.crt"

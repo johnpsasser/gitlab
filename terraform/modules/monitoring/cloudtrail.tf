@@ -77,6 +77,10 @@ resource "aws_s3_bucket" "cloudtrail" {
   tags = {
     Name = "${var.project_name}-cloudtrail"
   }
+
+  lifecycle {
+    prevent_destroy = true
+  }
 }
 
 resource "aws_s3_bucket_server_side_encryption_configuration" "cloudtrail" {
