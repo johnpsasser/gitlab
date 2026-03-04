@@ -7,7 +7,7 @@
 **Effective Date**: 2026-03-03
 **Last Reviewed**: 2026-03-03
 **Document Owner**: [System Owner Name]
-**Data Classification**: CUI // SP-NOFORN when populated with operational data
+**Data Classification**: CUI//SP-NOFORN when populated with operational data
 
 ---
 
@@ -611,11 +611,15 @@ The CloudWatch alarm `UnauthorizedAPICalls` fires when the metric filter detects
 
 ```bash
 # Query CloudTrail for unauthorized calls in the last hour
+# GNU/Linux:
 aws cloudtrail lookup-events \
   --lookup-attributes AttributeKey=EventName,AttributeValue=<event-name> \
   --start-time $(date -u -d '1 hour ago' +%Y-%m-%dT%H:%M:%SZ) \
   --end-time $(date -u +%Y-%m-%dT%H:%M:%SZ) \
   --query 'Events[?contains(CloudTrailEvent, `AccessDenied`)]'
+# macOS:
+# --start-time $(date -u -v-1H +%Y-%m-%dT%H:%M:%SZ) \
+# --end-time $(date -u +%Y-%m-%dT%H:%M:%SZ) \
 ```
 
 Alternatively, use CloudWatch Logs Insights:

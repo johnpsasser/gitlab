@@ -5,6 +5,7 @@ terraform/**/.terraform/
 *.tfstate.backup
 *.tfplan
 *.tfvars
+terraform/modules/**/*.zip
 
 # Secrets
 *.pem
@@ -15,6 +16,7 @@ docs/plans/
 
 # Claude
 CLAUDE.md
+.claude/
 
 # OS
 .DS_Store

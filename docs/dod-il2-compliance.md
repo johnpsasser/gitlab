@@ -24,7 +24,7 @@ AWS commercial regions, including us-east-1, hold **FedRAMP High** Provisional A
 
 ### This Deployment
 
-This GitLab instance runs on a single EC2 instance in a private subnet with no public IP. User access is through a public-facing Application Load Balancer protected by AWS WAF, with TLS 1.3 termination at the ALB. AWS WAF enforces OWASP common rules, known bad input filtering, and rate limiting. Authentication uses GitLab native authentication with mandatory two-factor authentication (TOTP) for all users, 15-character minimum passwords, and 60-minute session timeouts. Git operations use HTTPS only with Personal Access Tokens (PATs); SSH access is not enabled. Admin access is via SSM Session Manager only. All encryption uses Customer Managed KMS Keys (CMKs). Continuous monitoring is provided by GuardDuty, Security Hub (NIST 800-53 v5), and AWS Config. Infrastructure is fully defined in Terraform with Checkov policy scanning (265 passed, 0 failed).
+This GitLab instance runs on a single EC2 instance in a private subnet with no public IP. User access is through a public-facing Application Load Balancer protected by AWS WAF, with TLS 1.3 termination at the ALB. AWS WAF enforces OWASP common rules, known bad input filtering, and rate limiting. Authentication uses GitLab native authentication with mandatory two-factor authentication (TOTP) for all users, 15-character minimum passwords, and 60-minute session timeouts. Git operations use HTTPS only with Personal Access Tokens (PATs); SSH access is not enabled. Admin access is via SSM Session Manager only. All encryption uses Customer Managed KMS Keys (CMKs). Continuous monitoring is provided by GuardDuty, Security Hub (NIST 800-53 v5), and AWS Config. Infrastructure is fully defined in Terraform with Checkov policy scanning (390+ passed, 0 failed; run `checkov -d . --quiet` to get the current count).
 
 ---
 
@@ -57,7 +57,7 @@ This GitLab instance runs on a single EC2 instance in a private subnet with no p
 
 | Control Area | Status | Implementation |
 |---|---|---|
-| CA-7 Continuous Monitoring | Implemented | GuardDuty threat detection with S3 log monitoring (`modules/security/guardduty.tf`). Security Hub with NIST 800-53 v5 and AWS Foundational Security Best Practices standards (`modules/security/securityhub.tf`). AWS Config records all resource configurations (`modules/security/config.tf`). Checkov IaC scanning enforces security policies pre-deploy (265 passed, 0 failed, 30 skipped with justification). |
+| CA-7 Continuous Monitoring | Implemented | GuardDuty threat detection with S3 log monitoring (`modules/security/guardduty.tf`). Security Hub with NIST 800-53 v5 and AWS Foundational Security Best Practices standards (`modules/security/securityhub.tf`). AWS Config records all resource configurations (`modules/security/config.tf`). Checkov IaC scanning enforces security policies pre-deploy (390+ passed, 0 failed, 30+ skipped with justification; run `checkov -d . --quiet` to get the current count). |
 
 ### CM -- Configuration Management
 

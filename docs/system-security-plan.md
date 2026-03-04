@@ -255,23 +255,23 @@ The full control-by-control implementation mapping is maintained in the companio
 
 | NIST Family | Total Controls Addressed | Implemented | Partially Implemented | Gap | Key Implementations |
 |---|---|---|---|---|---|
-| **AC** -- Access Control | 7 | 5 | 0 | 2 | Admin-only accounts, WAF/SG enforcement, SSM-only access, MFA, DoD consent banner, inactive account deactivation (Lambda) |
+| **AC** -- Access Control | 7 | 7 | 0 | 0 | Admin-only accounts, WAF/SG enforcement, SSM-only access, MFA, DoD consent banner, inactive account deactivation (Lambda) |
 | **AU** -- Audit and Accountability | 6 | 5 | 1 | 0 | CloudTrail (multi-region), VPC flow logs, ALB access logs, WAF logs, S3 access logs, 365-day retention |
 | **CA** -- Security Assessment | 1 | 1 | 0 | 0 | GuardDuty, Security Hub (NIST 800-53 v5), AWS Config, Checkov IaC scanning |
 | **CM** -- Configuration Management | 4 | 4 | 0 | 0 | Terraform IaC, Checkov policy enforcement, AWS Config drift detection, TLS 1.3, IMDSv2 |
 | **CP** -- Contingency Planning | 3 | 2 | 1 | 0 | Daily S3 backups (CMK-encrypted), Secrets Manager backup, Terraform-based recovery, cross-region replication |
-| **IA** -- Identification and Authentication | 5 | 4 | 1 | 0 | MFA (zero grace period), 15-char passwords, Secrets Manager, PAT auth, automated root password rotation (Lambda) |
+| **IA** -- Identification and Authentication | 5 | 5 | 0 | 0 | MFA (zero grace period), 15-char passwords, Secrets Manager, PAT auth, automated root password rotation (Lambda) |
 | **IR** -- Incident Response | 3 | 3 | 0 | 0 | CloudWatch alarms, GuardDuty, Security Hub, formal IRP (docs/incident-response-plan.md) |
 | **MP** -- Media Protection | 1 | 0 | 1 | 0 | `DataClassification=IL2` resource tagging; gap: FISMA System ID tags |
 | **RA** -- Risk Assessment | 1 | 1 | 0 | 0 | Amazon Inspector (EC2 CVE scanning), Security Hub, GuardDuty, Checkov |
 | **SC** -- System and Comms Protection | 6 | 6 | 0 | 0 | WAF rate limiting, private subnets, TLS 1.3, CMK encryption, VPC endpoints, FIPS AMI |
-| **SI** -- System and Info Integrity | 4 | 2 | 2 | 0 | CloudWatch monitoring, GuardDuty, ClamAV antimalware, Amazon Inspector, CISA KEV monitoring (Lambda) |
+| **SI** -- System and Info Integrity | 5 | 5 | 0 | 0 | CloudWatch monitoring, GuardDuty, ClamAV antimalware, Amazon Inspector, CISA KEV monitoring (Lambda), AIDE file integrity monitoring |
 
 ### Overall Posture
 
-- **Controls Implemented**: 33 of 41 addressed controls fully implemented
-- **Partially Implemented**: 6 controls with identified enhancement paths
-- **Gaps**: 2 controls requiring procedural/documentation action (AC gaps, FISMA tags)
+- **Controls Implemented**: 39 of 42 addressed controls fully implemented
+- **Partially Implemented**: 3 controls with identified enhancement paths (AU-6, CP-6, MP-3)
+- **Gaps**: 0 infrastructure gaps; 2 procedural items tracked in [Remaining Gaps](#remaining-gaps) (AT-2 training, FISMA tags)
 
 ---
 
@@ -299,7 +299,7 @@ This section cross-references the NIST 800-53 Rev 5 Moderate baseline controls w
 | CM-2 | Baseline Configuration | Terraform IaC, AL2023 AMI, `user_data.sh` bootstrap, `gitlab.rb` template, AWS Config recording |
 | CM-3 | Configuration Change Control | Terraform plan/apply, Checkov pre-deploy scanning, Git audit trail, AWS Config drift detection |
 | CM-6 | Configuration Settings | TLS 1.3, IMDSv2, KMS key rotation, ALB header validation, GitLab hardening settings |
-| CM-7 | Least Functionality | Ports 443 (ALB) and 80 (EC2 from ALB) only; SSH removed; HTTPS-only Git |
+| CM-7 | Least Functionality | Port 443 only (ALB inbound and EC2 from ALB with self-signed TLS); SSH removed; HTTPS-only Git |
 | CP-9 | System Backup | Daily GitLab data + config backups to S3 (CMK-encrypted, versioned, Glacier lifecycle) |
 | CP-10 | System Recovery | Terraform rebuild, S3 backup restore, Secrets Manager recovery, separate data volume |
 | IA-2 | Identification and Authentication | GitLab native auth, admin-managed accounts, signup disabled |
@@ -315,9 +315,11 @@ This section cross-references the NIST 800-53 Rev 5 Moderate baseline controls w
 | SC-12 | Cryptographic Key Management | 3 CMKs with annual rotation, ACM certificate management |
 | SC-13 | Cryptographic Protection | FIPS-validated AMI recommended, TLS 1.3, CMK encryption, KMS FIPS 140-2 Level 3 HSMs |
 | SC-28 | Protection of Information at Rest | CMK-encrypted EBS, S3, Secrets Manager; AES-256 for ALB logs; public access blocked |
+| SI-2 | Flaw Remediation | Amazon Linux 2023 security updates via `dnf`, Amazon Inspector continuous CVE scanning, Security Hub integration |
 | SI-3 | Malicious Code Protection | ClamAV on EC2 (daily scans, daily signature updates), GuardDuty malware protection (EBS volumes) |
 | SI-4 | Information System Monitoring | CloudWatch (CPU, status, unauthorized API), CloudTrail, flow logs, WAF logs, GuardDuty, Security Hub, AWS Config |
 | SI-5 | Security Alerts and Advisories | CISA KEV monitoring Lambda (daily), CloudWatch alarms via SNS, Security Hub findings |
+| SI-7 | Software and Information Integrity | AIDE file integrity monitoring on EC2 (daily checks, results logged to CloudWatch) |
 
 ### Remaining Gaps
 
@@ -427,6 +429,12 @@ The GitLab data volume (`/var/opt/gitlab`) is a separate EBS volume from the roo
 - Independent data volume snapshots
 - Data volume reattachment to a replacement instance
 - Root volume replacement without data loss
+
+### Accepted Risks (CP-2, CP-7)
+
+| Risk | Rationale | Cost Avoidance |
+|---|---|---|
+| **Single NAT Gateway** -- NAT Gateway is deployed in one AZ only. If that AZ fails, private-subnet outbound internet access is lost. | The GitLab EC2 instance is also single-AZ, so a second NAT Gateway in a different AZ provides no high-availability benefit. The entire workload (EC2 + NAT) would need to be restored together. VPC endpoints (7 configured) provide continued private access to AWS services even if the NAT fails. | ~$32/month + data processing fees saved by not deploying a redundant NAT. |
 
 ### Contingency Plan Testing
 

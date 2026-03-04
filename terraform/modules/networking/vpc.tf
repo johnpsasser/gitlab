@@ -44,7 +44,9 @@ resource "aws_subnet" "private" {
   }
 }
 
-# NAT Gateway (single AZ to save cost)
+# NAT Gateway (single AZ -- accepted risk documented in SSP under CP-2/CP-7)
+# The EC2 instance is also single-AZ, so a second NAT provides no HA benefit.
+# Estimated cost of second NAT: ~$32/month + data processing fees.
 resource "aws_eip" "nat" {
   domain = "vpc"
 

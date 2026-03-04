@@ -27,3 +27,18 @@ output "ssm_connect_command" {
   description = "Command to connect via SSM"
   value       = "aws ssm start-session --target ${module.gitlab.instance_id}"
 }
+
+output "acm_validation_records" {
+  description = "DNS validation records for ACM certificate (create these in Cloudflare)"
+  value       = module.alb.acm_validation_records
+}
+
+output "sns_topic_arn" {
+  description = "SNS topic ARN for alarm notifications"
+  value       = module.monitoring.sns_topic_arn
+}
+
+output "vpc_id" {
+  description = "VPC ID"
+  value       = module.networking.vpc_id
+}

@@ -71,9 +71,9 @@ variable "data_classification" {
 }
 
 variable "use_fips_ami" {
-  description = "Use FIPS-validated Amazon Linux 2023 AMI for IL2 compliance"
+  description = "Use FIPS-validated Amazon Linux 2023 AMI for IL2 compliance (SC-13). Set to true for production IL2 deployments."
   type        = bool
-  default     = false
+  default     = false # Default false for dev/test; set true in production tfvars
 }
 
 variable "enable_backup_replication" {

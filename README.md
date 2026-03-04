@@ -6,7 +6,7 @@ Terraform infrastructure for deploying a self-hosted GitLab instance on AWS with
 
 ## Architecture Overview
 
-GitLab runs on a single EC2 instance inside private subnets. Developers connect over HTTPS to an internet-facing Application Load Balancer, which is protected by AWS WAF (OWASP common rules, known bad inputs, and rate limiting). The ALB terminates TLS 1.3 and re-encrypts traffic to the GitLab instance over HTTPS (port 443) using a self-signed certificate. Outbound internet access (for package updates) is routed through a NAT Gateway in the public subnets. Admin access to the instance is via SSM Session Manager only.
+GitLab runs on a single EC2 instance inside private subnets. Developers connect over HTTPS to an internet-facing Application Load Balancer, which is protected by AWS WAF (6 rule groups: OWASP common rules, known bad inputs, IP reputation, rate limiting, SQLi, and Linux rules). The ALB terminates TLS 1.3 and re-encrypts traffic to the GitLab instance over HTTPS (port 443) using a self-signed certificate. Outbound internet access (for package updates) is routed through a NAT Gateway in the public subnets. Admin access to the instance is via SSM Session Manager only.
 
 AWS service access from the private subnets is handled via 7 VPC endpoints (S3, SSM, SSM Messages, EC2 Messages, Secrets Manager, CloudWatch Logs, KMS), minimizing traffic that traverses the NAT Gateway. All data is encrypted at rest using Customer Managed KMS Keys, and all S3 buckets have public access blocked with lifecycle policies that transition objects to Glacier. All resources are tagged with the DoD IL2 `DataClassification` tag.
 
@@ -64,7 +64,7 @@ Internet-facing Application Load Balancer, target group, HTTPS listener, ACM cer
 
 - Internet-facing ALB spanning 2 public subnets
 - HTTPS listener on port 443 with TLS 1.3 policy (`ELBSecurityPolicy-TLS13-1-2-2021-06`)
-- ACM certificate with email validation
+- ACM certificate with DNS validation
 - Target group forwarding HTTPS port 443 with health checks on `/-/health`
 - Access logs to the S3 access logs bucket (managed by the `networking` module) with Glacier lifecycle
 - Deletion protection enabled
@@ -75,7 +75,10 @@ AWS WAF WebACL with managed rules, rate limiting, and logging.
 
 - OWASP common rules (AWS Managed Rules Common Rule Set)
 - Known bad inputs rule group
+- IP reputation list rule group
 - Rate limiting to protect against abuse
+- SQL injection rule group
+- Linux-specific rule group
 - Associated with the internet-facing ALB
 - WAF logging to CloudWatch Logs (CMK-encrypted)
 
@@ -152,9 +155,12 @@ Key variables in `terraform.tfvars`:
 | `data_volume_size` | GitLab data EBS volume size (GB) | `100` |
 | `backup_replication_region` | Region for backup cross-region replication | `us-west-2` |
 | `data_classification` | DoD data classification level | `IL2` |
+| `use_fips_ami` | Use FIPS-validated AMI (SC-13) | `false` |
+| `enable_backup_replication` | Cross-region S3 backup replication (CP-6) | `false` |
+| `alert_email` | Email for CloudWatch alarm notifications | -- |
 
-After `terraform apply`, approve the ACM certificate validation email sent to the
-domain's admin contacts (admin@yourdomain.com, etc.). This is a one-time manual step.
+After `terraform apply`, create the ACM DNS validation CNAME record in Cloudflare.
+The required validation records are shown in: `terraform output acm_validation_records`
 
 Connect to the instance via SSM:
 
@@ -200,7 +206,7 @@ DNS is managed via Cloudflare, outside of Terraform. After deployment:
 2. In Cloudflare, create a CNAME record:
    - **Name:** `gitlab` (or your subdomain)
    - **Target:** The ALB DNS name from step 1
-   - **Proxy status:** Proxied (orange cloud) -- since the ALB is internet-facing, Cloudflare proxy mode can be enabled for additional DDoS protection and caching
+   - **Proxy status:** DNS only (gray cloud) -- proxied mode changes source IPs to Cloudflare, which breaks WAF rate limiting and GuardDuty network detection
 
 ## Outputs
 

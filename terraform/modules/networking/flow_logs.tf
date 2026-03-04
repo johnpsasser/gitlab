@@ -1,12 +1,3 @@
-# State migration commands (run before apply):
-# terraform state mv 'module.networking.aws_s3_bucket.flow_logs' 'module.networking.module.flow_logs_bucket.aws_s3_bucket.this'
-# terraform state mv 'module.networking.aws_s3_bucket_server_side_encryption_configuration.flow_logs' 'module.networking.module.flow_logs_bucket.aws_s3_bucket_server_side_encryption_configuration.this'
-# terraform state mv 'module.networking.aws_s3_bucket_versioning.flow_logs' 'module.networking.module.flow_logs_bucket.aws_s3_bucket_versioning.this[0]'
-# terraform state mv 'module.networking.aws_s3_bucket_public_access_block.flow_logs' 'module.networking.module.flow_logs_bucket.aws_s3_bucket_public_access_block.this'
-# terraform state mv 'module.networking.aws_s3_bucket_lifecycle_configuration.flow_logs' 'module.networking.module.flow_logs_bucket.aws_s3_bucket_lifecycle_configuration.this'
-# terraform state mv 'module.networking.aws_s3_bucket_logging.flow_logs' 'module.networking.module.flow_logs_bucket.aws_s3_bucket_logging.this[0]'
-# terraform state mv 'module.networking.aws_s3_bucket_policy.flow_logs' 'module.networking.module.flow_logs_bucket.aws_s3_bucket_policy.this'
-
 data "aws_caller_identity" "current" {}
 
 module "flow_logs_bucket" {

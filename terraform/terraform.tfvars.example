@@ -21,5 +21,11 @@ backup_replication_region = "us-west-2"
 # DoD IL2 classification tag
 data_classification = "IL2"
 
+# FIPS-validated AMI for IL2 compliance (SC-13) -- set true for production
+# use_fips_ami = true
+
+# Cross-region backup replication (CP-6) -- set true for production
+# enable_backup_replication = false
+
 # Email for CloudWatch alarm notifications (must confirm subscription)
 alert_email = "admin@yourcompany.com"
