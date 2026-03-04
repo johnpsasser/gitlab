@@ -7,12 +7,12 @@ vpc_cidr      = "10.0.0.0/16"
 instance_type = "t3.xlarge"
 
 # Your GitLab domain
-domain_name = "gitlab.yourcompany.com"
+domain_name = "code.agiledefense.xyz"
 
-# DNS is managed via Cloudflare (outside Terraform).
-# After terraform apply, create a CNAME record in Cloudflare pointing
-# your domain to the ALB DNS name (shown in terraform output alb_dns_name).
-# Set Cloudflare proxy status to "DNS only" (gray cloud).
+# DNS is managed via Route53 subdomain delegation.
+# The agiledefense.xyz zone is in a separate AWS account.
+# After terraform apply, add the NS records from `terraform output route53_nameservers`
+# to the parent zone for subdomain delegation.
 
 # Backup
 data_volume_size          = 100
@@ -28,4 +28,4 @@ data_classification = "IL2"
 # enable_backup_replication = false
 
 # Email for CloudWatch alarm notifications (must confirm subscription)
-alert_email = "admin@yourcompany.com"
+alert_email = "admin@agiledefense.xyz"
