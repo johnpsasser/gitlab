@@ -1,4 +1,6 @@
 resource "aws_route53_zone" "gitlab" {
+  #checkov:skip=CKV2_AWS_38:DNSSEC deferred -- KSK rotation adds operational complexity; accept risk for initial deployment
+  #checkov:skip=CKV2_AWS_39:DNS query logging deferred -- requires CloudWatch log group provisioning; tracked for follow-on task
   name = var.domain_name
 
   tags = {

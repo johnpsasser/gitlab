@@ -9,6 +9,6 @@ output "nameservers" {
 }
 
 output "validated_certificate_arn" {
-  description = "ARN of the validated ACM certificate"
+  description = "ARN of the validated ACM certificate (validation completes during apply; available for downstream consumers)"
   value       = aws_acm_certificate_validation.gitlab.certificate_arn
 }
