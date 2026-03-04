@@ -1,0 +1,1215 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Incident Response Plan -- GitLab CE on AWS</title>
+  <style>
+    :root {
+      --bg: #ffffff;
+      --fg: #1a1a2e;
+      --accent: #e74d3c;
+      --accent-light: #fdf0ee;
+      --accent-dark: #c0392b;
+      --border: #e0e0e0;
+      --code-bg: #f5f5f5;
+      --code-border: #ddd;
+      --success: #27ae60;
+      --warning: #f39c12;
+      --info-blue: #3498db;
+      --sidebar-bg: #f9f9fb;
+      --sidebar-width: 280px;
+      --sev1: #c0392b;
+      --sev2: #e74d3c;
+      --sev3: #f39c12;
+      --sev4: #95a5a6;
+    }
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+      color: var(--fg);
+      background: var(--bg);
+      line-height: 1.6;
+    }
+
+    /* Sidebar TOC */
+    .sidebar {
+      position: fixed;
+      top: 0;
+      left: 0;
+      width: var(--sidebar-width);
+      height: 100vh;
+      background: var(--sidebar-bg);
+      border-right: 1px solid var(--border);
+      overflow-y: auto;
+      padding: 1.5rem 0;
+      z-index: 100;
+    }
+    .sidebar-header {
+      padding: 0 1.2rem 1rem;
+      border-bottom: 2px solid var(--accent);
+      margin-bottom: 0.8rem;
+    }
+    .sidebar-header h2 {
+      font-size: 0.95rem;
+      color: var(--accent);
+      text-transform: uppercase;
+      letter-spacing: 0.05em;
+      margin: 0;
+      border: none;
+      padding: 0;
+    }
+    .sidebar-header .doc-label {
+      font-size: 0.75rem;
+      color: #888;
+      margin-top: 0.2rem;
+    }
+    .sidebar nav ol {
+      list-style: none;
+      padding: 0;
+      margin: 0;
+    }
+    .sidebar nav > ol > li {
+      margin-bottom: 0.1rem;
+    }
+    .sidebar nav > ol > li > a {
+      display: block;
+      padding: 0.4rem 1.2rem;
+      color: var(--fg);
+      text-decoration: none;
+      font-size: 0.85rem;
+      font-weight: 600;
+      transition: background 0.15s, color 0.15s;
+      border-left: 3px solid transparent;
+    }
+    .sidebar nav > ol > li > a:hover,
+    .sidebar nav > ol > li > a.active {
+      background: var(--accent-light);
+      color: var(--accent);
+      border-left-color: var(--accent);
+    }
+    .sidebar nav ol ol {
+      list-style: none;
+      padding: 0;
+    }
+    .sidebar nav ol ol li a {
+      display: block;
+      padding: 0.25rem 1.2rem 0.25rem 2rem;
+      color: #555;
+      text-decoration: none;
+      font-size: 0.8rem;
+      transition: color 0.15s;
+    }
+    .sidebar nav ol ol li a:hover {
+      color: var(--accent);
+    }
+
+    /* Main content */
+    .main {
+      margin-left: var(--sidebar-width);
+      max-width: 860px;
+      padding: 2rem 2.5rem 4rem;
+    }
+
+    /* Header */
+    .doc-header {
+      border-bottom: 2px solid var(--accent);
+      padding-bottom: 1.5rem;
+      margin-bottom: 2rem;
+    }
+    .doc-header h1 {
+      font-size: 2rem;
+      margin-bottom: 0.3rem;
+    }
+    .doc-header .subtitle {
+      color: #666;
+      font-size: 1rem;
+      margin-bottom: 0.8rem;
+    }
+    .doc-meta {
+      display: grid;
+      grid-template-columns: auto auto;
+      gap: 0.2rem 2rem;
+      font-size: 0.85rem;
+      color: #555;
+      max-width: 500px;
+    }
+    .doc-meta dt { font-weight: 600; color: var(--fg); }
+    .doc-meta dd { margin: 0; }
+    .classification-banner {
+      display: inline-block;
+      background: var(--accent);
+      color: white;
+      padding: 0.2rem 0.8rem;
+      border-radius: 3px;
+      font-size: 0.8rem;
+      font-weight: 700;
+      letter-spacing: 0.03em;
+      margin-top: 0.8rem;
+    }
+
+    /* Typography */
+    h2 {
+      font-size: 1.4rem;
+      margin-top: 3rem;
+      margin-bottom: 1rem;
+      padding-bottom: 0.4rem;
+      border-bottom: 2px solid var(--accent);
+    }
+    h3 {
+      font-size: 1.15rem;
+      margin-top: 2rem;
+      margin-bottom: 0.6rem;
+      color: var(--fg);
+    }
+    h4 {
+      font-size: 1rem;
+      margin-top: 1.5rem;
+      margin-bottom: 0.5rem;
+      color: #333;
+    }
+    p { margin-bottom: 0.8rem; }
+    li { margin-bottom: 0.4rem; }
+    ol, ul { padding-left: 1.5rem; margin-bottom: 1rem; }
+
+    a { color: var(--accent); text-decoration: none; }
+    a:hover { text-decoration: underline; }
+
+    /* Callout boxes */
+    .callout {
+      padding: 1rem 1.2rem;
+      margin: 1rem 0;
+      border-radius: 0 4px 4px 0;
+    }
+    .callout-important {
+      background: var(--accent-light);
+      border-left: 4px solid var(--accent);
+    }
+    .callout-info {
+      background: #e8f4fd;
+      border-left: 4px solid var(--info-blue);
+    }
+    .callout-warning {
+      background: #fff8e1;
+      border-left: 4px solid var(--warning);
+    }
+    .callout strong:first-child {
+      display: block;
+      margin-bottom: 0.3rem;
+    }
+
+    /* Code */
+    pre {
+      background: var(--code-bg);
+      border: 1px solid var(--code-border);
+      border-radius: 4px;
+      padding: 1rem;
+      overflow-x: auto;
+      margin: 0.8rem 0 1.2rem;
+      font-size: 0.88em;
+      line-height: 1.5;
+    }
+    code {
+      font-family: "SF Mono", "Fira Code", "Fira Mono", Menlo, Consolas, monospace;
+      font-size: 0.9em;
+    }
+    p code, li code, td code {
+      background: var(--code-bg);
+      padding: 0.15rem 0.4rem;
+      border-radius: 3px;
+      border: 1px solid var(--code-border);
+    }
+
+    /* Tables */
+    table {
+      width: 100%;
+      border-collapse: collapse;
+      margin: 1rem 0 1.5rem;
+      font-size: 0.9em;
+    }
+    th, td {
+      text-align: left;
+      padding: 0.6rem 0.8rem;
+      border: 1px solid var(--border);
+      vertical-align: top;
+    }
+    th {
+      background: var(--code-bg);
+      font-weight: 600;
+      white-space: nowrap;
+    }
+
+    /* Severity badges */
+    .sev-badge {
+      display: inline-block;
+      color: white;
+      padding: 0.15rem 0.6rem;
+      border-radius: 3px;
+      font-size: 0.8rem;
+      font-weight: 700;
+      white-space: nowrap;
+    }
+    .sev-1 { background: var(--sev1); }
+    .sev-2 { background: var(--sev2); }
+    .sev-3 { background: var(--sev3); }
+    .sev-4 { background: var(--sev4); }
+
+    /* Status tags */
+    .tag {
+      display: inline-block;
+      padding: 0.1rem 0.5rem;
+      border-radius: 3px;
+      font-size: 0.8rem;
+      font-weight: 600;
+    }
+    .tag-action { background: var(--accent); color: white; }
+    .tag-info { background: var(--info-blue); color: white; }
+    .tag-success { background: var(--success); color: white; }
+
+    /* Section numbering helper */
+    .section-ref {
+      display: inline-block;
+      background: var(--accent);
+      color: white;
+      padding: 0.1rem 0.5rem;
+      border-radius: 3px;
+      font-size: 0.85rem;
+      font-weight: 600;
+      margin-right: 0.3rem;
+      vertical-align: middle;
+    }
+
+    /* Ordered procedure lists */
+    ol.procedure {
+      counter-reset: step;
+      list-style: none;
+      padding-left: 0;
+    }
+    ol.procedure > li {
+      counter-increment: step;
+      padding: 0.5rem 0 0.5rem 2.5rem;
+      position: relative;
+      margin-bottom: 0.3rem;
+    }
+    ol.procedure > li::before {
+      content: counter(step);
+      position: absolute;
+      left: 0;
+      top: 0.5rem;
+      width: 1.6rem;
+      height: 1.6rem;
+      background: var(--accent);
+      color: white;
+      border-radius: 50%;
+      text-align: center;
+      font-size: 0.85rem;
+      font-weight: 600;
+      line-height: 1.6rem;
+    }
+
+    hr {
+      border: none;
+      border-top: 1px solid var(--border);
+      margin: 2.5rem 0;
+    }
+
+    footer {
+      margin-top: 3rem;
+      padding-top: 1rem;
+      border-top: 1px solid var(--border);
+      color: #888;
+      font-size: 0.85rem;
+    }
+
+    /* Mobile responsive */
+    @media (max-width: 960px) {
+      .sidebar {
+        position: relative;
+        width: 100%;
+        height: auto;
+        max-height: none;
+        border-right: none;
+        border-bottom: 1px solid var(--border);
+        padding: 1rem 0;
+      }
+      .main {
+        margin-left: 0;
+        padding: 1.5rem 1.2rem 3rem;
+      }
+      .doc-meta {
+        grid-template-columns: 1fr;
+      }
+    }
+
+    /* Print styles */
+    @media print {
+      .sidebar { display: none; }
+      .main { margin-left: 0; max-width: 100%; }
+      h2 { page-break-after: avoid; }
+      table { page-break-inside: avoid; }
+      pre { white-space: pre-wrap; }
+    }
+  </style>
+</head>
+<body>
+
+<!-- Sidebar TOC -->
+<aside class="sidebar">
+  <div class="sidebar-header">
+    <h2>Incident Response Plan</h2>
+    <div class="doc-label">GitLab CE on AWS &middot; IL2</div>
+  </div>
+  <nav>
+    <ol>
+      <li><a href="#purpose-scope">1. Purpose &amp; Scope</a></li>
+      <li><a href="#roles">2. Roles &amp; Responsibilities</a></li>
+      <li><a href="#classification">3. Incident Classification</a>
+        <ol>
+          <li><a href="#severity-levels">Severity Levels</a></li>
+          <li><a href="#severity-adjustment">Adjustment Criteria</a></li>
+        </ol>
+      </li>
+      <li><a href="#detection">4. Detection &amp; Analysis</a>
+        <ol>
+          <li><a href="#detection-sources">Detection Sources</a></li>
+          <li><a href="#analysis-checklist">Analysis Checklist</a></li>
+          <li><a href="#evidence">Evidence Preservation</a></li>
+        </ol>
+      </li>
+      <li><a href="#containment">5. Containment Strategies</a>
+        <ol>
+          <li><a href="#immediate-containment">Immediate Containment</a></li>
+          <li><a href="#extended-containment">Extended Containment</a></li>
+        </ol>
+      </li>
+      <li><a href="#eradication-recovery">6. Eradication &amp; Recovery</a>
+        <ol>
+          <li><a href="#eradication">Eradication</a></li>
+          <li><a href="#recovery">Recovery</a></li>
+        </ol>
+      </li>
+      <li><a href="#post-incident">7. Post-Incident Activity</a></li>
+      <li><a href="#contacts">8. Contact List</a></li>
+      <li><a href="#reporting">9. Reporting Procedures</a>
+        <ol>
+          <li><a href="#internal-reporting">Internal Reporting</a></li>
+          <li><a href="#dod-reporting">DoD Reporting</a></li>
+          <li><a href="#cisa-reporting">CISA Reporting</a></li>
+        </ol>
+      </li>
+      <li><a href="#appendix-a">Appendix A: GuardDuty Runbook</a></li>
+      <li><a href="#appendix-b">Appendix B: Unauthorized API Runbook</a></li>
+    </ol>
+  </nav>
+</aside>
+
+<!-- Main content -->
+<div class="main">
+
+  <!-- Document Header -->
+  <header class="doc-header">
+    <h1>Incident Response Plan</h1>
+    <p class="subtitle">Self-Hosted GitLab CE on AWS &mdash; DoD IL2 Compliance</p>
+    <dl class="doc-meta">
+      <dt>Framework</dt>
+      <dd>NIST SP 800-61 Rev 2</dd>
+      <dt>Version</dt>
+      <dd>1.0</dd>
+      <dt>Effective Date</dt>
+      <dd>2026-03-03</dd>
+      <dt>Last Reviewed</dt>
+      <dd>2026-03-03</dd>
+      <dt>Document Owner</dt>
+      <dd>[System Owner Name]</dd>
+      <dt>Classification</dt>
+      <dd>IL2</dd>
+    </dl>
+    <div class="classification-banner">CUI // SP-NOFORN WHEN POPULATED WITH OPERATIONAL DATA</div>
+  </header>
+
+  <!-- Section 1 -->
+  <h2 id="purpose-scope">1. Purpose and Scope</h2>
+
+  <h3>1.1 Purpose</h3>
+  <p>This Incident Response Plan (IRP) establishes procedures for detecting, analyzing, containing, eradicating, and recovering from cybersecurity incidents affecting the self-hosted GitLab CE deployment on AWS. The plan satisfies NIST 800-53 controls <strong>IR-1</strong> (Incident Response Policy and Procedures), <strong>IR-4</strong> (Incident Handling), <strong>IR-6</strong> (Incident Reporting), and <strong>IR-8</strong> (Incident Response Plan) as required for DoD IL2 compliance.</p>
+
+  <h3>1.2 Scope</h3>
+  <p>This plan covers all components of the GitLab CE infrastructure:</p>
+  <ul>
+    <li><strong>Compute</strong>: EC2 instance running GitLab CE on Amazon Linux 2023 (private subnet)</li>
+    <li><strong>Network</strong>: VPC, public/private subnets across 2 AZs, ALB, NAT Gateway, VPC endpoints</li>
+    <li><strong>Security</strong>: AWS WAF (OWASP rules, rate limiting), security groups, IAM roles/policies</li>
+    <li><strong>Data</strong>: EBS volumes (root + data), S3 backup bucket, Secrets Manager secrets</li>
+    <li><strong>Monitoring</strong>: GuardDuty (with malware protection), Security Hub (NIST 800-53 v5), AWS Config, CloudTrail (multi-region), CloudWatch alarms, VPC Flow Logs, Amazon Inspector, ClamAV</li>
+    <li><strong>Encryption</strong>: Customer Managed KMS Keys (general, CloudTrail, EBS)</li>
+    <li><strong>Access</strong>: SSM Session Manager (no SSH), GitLab native auth with mandatory 2FA</li>
+  </ul>
+
+  <h3>1.3 Authority</h3>
+  <p>This plan is maintained under the authority of the System Owner and Information System Security Officer (ISSO). It is reviewed and updated at least annually or after any significant incident.</p>
+
+  <h3>1.4 References</h3>
+  <ul>
+    <li>NIST SP 800-61 Rev 2, Computer Security Incident Handling Guide</li>
+    <li>NIST SP 800-53 Rev 5, Security and Privacy Controls</li>
+    <li>DoD Cloud Computing Security Requirements Guide (CC SRG)</li>
+    <li>CISA Federal Incident Notification Guidelines</li>
+    <li>DoD Instruction 8530.01, Cybersecurity Activities Support to DoD Information Network Operations</li>
+    <li>This project's <a href="dod-il2-compliance.html">DoD IL2 Compliance Mapping</a></li>
+  </ul>
+
+  <hr>
+
+  <!-- Section 2 -->
+  <h2 id="roles">2. Roles and Responsibilities</h2>
+
+  <h3>2.1 Incident Response Team (IRT)</h3>
+  <table>
+    <tr><th>Role</th><th>Responsibilities</th></tr>
+    <tr>
+      <td><strong>Incident Commander (IC)</strong></td>
+      <td>Owns the incident lifecycle. Declares severity, authorizes containment actions, coordinates communications, and determines when the incident is resolved. Final authority on all response decisions.</td>
+    </tr>
+    <tr>
+      <td><strong>Technical Lead (TL)</strong></td>
+      <td>Leads technical investigation and remediation. Analyzes logs (CloudTrail, VPC Flow Logs, GuardDuty findings), executes containment actions (security group changes, WAF rules), and manages system recovery via Terraform and S3 backups.</td>
+    </tr>
+    <tr>
+      <td><strong>Communications Lead (CL)</strong></td>
+      <td>Manages internal and external notifications. Coordinates with stakeholders, DoD reporting channels, and end users. Maintains the incident timeline and drafts post-incident reports.</td>
+    </tr>
+  </table>
+
+  <h3>2.2 Escalation Authority</h3>
+  <table>
+    <tr><th>Decision</th><th>Authority</th></tr>
+    <tr><td>Declare Severity 1 or 2 incident</td><td>Incident Commander</td></tr>
+    <tr><td>Isolate or terminate EC2 instance</td><td>Technical Lead (with IC approval)</td></tr>
+    <tr><td>Modify WAF rules or security groups</td><td>Technical Lead</td></tr>
+    <tr><td>Notify external parties (DoD, CISA)</td><td>Communications Lead (with IC approval)</td></tr>
+    <tr><td>Authorize system rebuild from Terraform</td><td>Incident Commander</td></tr>
+    <tr><td>Approve post-incident report for distribution</td><td>Incident Commander</td></tr>
+  </table>
+
+  <h3>2.3 On-Call Rotation</h3>
+  <p>The IRT maintains a 24/7 on-call rotation. The on-call engineer receives SNS alerts from the <code>aws_sns_topic.alerts</code> topic and is responsible for initial triage within the response times defined in Section 3.</p>
+
+  <hr>
+
+  <!-- Section 3 -->
+  <h2 id="classification">3. Incident Classification</h2>
+
+  <h3 id="severity-levels">3.1 Severity Levels</h3>
+  <table>
+    <tr>
+      <th>Severity</th>
+      <th>Definition</th>
+      <th>Response Time</th>
+      <th>Examples</th>
+    </tr>
+    <tr>
+      <td><span class="sev-badge sev-1">SEV-1</span><br>Critical</td>
+      <td>Active compromise, data exfiltration, or complete service loss. Immediate threat to data confidentiality, integrity, or availability.</td>
+      <td><strong>15 minutes</strong> initial response; continuous work until contained</td>
+      <td>Active unauthorized access to GitLab data; GuardDuty <code>Trojan</code> or <code>CryptoCurrency</code> finding on EC2; KMS key compromise; ransomware detection by ClamAV; complete GitLab service outage</td>
+    </tr>
+    <tr>
+      <td><span class="sev-badge sev-2">SEV-2</span><br>High</td>
+      <td>Attempted or partial compromise, significant vulnerability exploitation, or major service degradation.</td>
+      <td><strong>1 hour</strong> initial response</td>
+      <td>Successful brute-force authentication; unauthorized IAM API calls detected by CloudTrail; Inspector critical CVE with known exploit; WAF bypass detected; EBS volume or S3 bucket policy modification</td>
+    </tr>
+    <tr>
+      <td><span class="sev-badge sev-3">SEV-3</span><br>Moderate</td>
+      <td>Suspicious activity, policy violations, or minor service impact requiring investigation.</td>
+      <td><strong>4 hours</strong> initial response</td>
+      <td>Elevated GuardDuty <code>Recon</code> findings; repeated WAF-blocked attacks from single source; unauthorized security group modification detected by Config; failed SSM session attempts; GitLab admin account anomalies</td>
+    </tr>
+    <tr>
+      <td><span class="sev-badge sev-4">SEV-4</span><br>Low</td>
+      <td>Informational security events, minor policy deviations, or routine findings.</td>
+      <td><strong>24 hours</strong> initial response</td>
+      <td>Security Hub low-severity findings; Inspector medium/low CVEs; single failed login attempts; routine ClamAV scan clean results; AWS Config minor drift</td>
+    </tr>
+  </table>
+
+  <h3 id="severity-adjustment">3.2 Severity Adjustment Criteria</h3>
+  <p>Severity may be escalated if:</p>
+  <ul>
+    <li>The scope of impact expands (e.g., additional systems or data affected)</li>
+    <li>Indicators of a coordinated or advanced persistent threat emerge</li>
+    <li>Data classified at IL2 or above is confirmed exposed</li>
+    <li>The incident attracts external attention or media coverage</li>
+    <li>Recovery time exceeds initial estimates</li>
+  </ul>
+
+  <hr>
+
+  <!-- Section 4 -->
+  <h2 id="detection">4. Detection and Analysis</h2>
+
+  <h3 id="detection-sources">4.1 Detection Sources</h3>
+  <table>
+    <tr><th>Source</th><th>What It Detects</th><th>Location</th><th>Alert Mechanism</th></tr>
+    <tr>
+      <td><strong>GuardDuty</strong></td>
+      <td>Threat intelligence matches, anomalous API calls, network anomalies, malware on EC2/EBS, DNS-based exfiltration</td>
+      <td><code>modules/security/guardduty.tf</code></td>
+      <td>Security Hub aggregation; EventBridge rules to SNS</td>
+    </tr>
+    <tr>
+      <td><strong>Security Hub</strong></td>
+      <td>NIST 800-53 v5 control failures, AWS Foundational Best Practices violations, aggregated findings</td>
+      <td><code>modules/security/securityhub.tf</code></td>
+      <td>Security Hub dashboard; EventBridge to SNS</td>
+    </tr>
+    <tr>
+      <td><strong>CloudWatch Alarms</strong></td>
+      <td>CPU utilization &gt;90%, EC2 status check failures, unauthorized API calls</td>
+      <td><code>modules/monitoring/cloudwatch.tf</code></td>
+      <td>SNS topic <code>aws_sns_topic.alerts</code></td>
+    </tr>
+    <tr>
+      <td><strong>CloudTrail</strong></td>
+      <td>All AWS API calls across all regions, console sign-in events, IAM changes</td>
+      <td><code>modules/monitoring/cloudtrail.tf</code></td>
+      <td>CloudWatch Logs metric filters; S3 log analysis</td>
+    </tr>
+    <tr>
+      <td><strong>VPC Flow Logs</strong></td>
+      <td>Network connection attempts, rejected flows, unusual traffic patterns</td>
+      <td><code>modules/networking/flow_logs.tf</code></td>
+      <td>CloudWatch Logs analysis</td>
+    </tr>
+    <tr>
+      <td><strong>WAF Logs</strong></td>
+      <td>Blocked requests (OWASP rule matches, known bad inputs), rate-limited IPs</td>
+      <td><code>modules/waf/waf.tf</code></td>
+      <td>CloudWatch Logs; WAF metrics</td>
+    </tr>
+    <tr>
+      <td><strong>Amazon Inspector</strong></td>
+      <td>CVE findings on EC2, OS and application vulnerability assessments</td>
+      <td>Inspector console / EventBridge</td>
+      <td>Security Hub integration; EventBridge to SNS</td>
+    </tr>
+    <tr>
+      <td><strong>ClamAV</strong></td>
+      <td>Malware, trojans, viruses detected on file system</td>
+      <td>EC2 instance (<code>user_data.sh</code>)</td>
+      <td>Local logs; CloudWatch Logs agent</td>
+    </tr>
+    <tr>
+      <td><strong>AWS Config</strong></td>
+      <td>Configuration changes, compliance rule violations, resource drift</td>
+      <td><code>modules/security/config.tf</code></td>
+      <td>Security Hub integration; SNS notifications</td>
+    </tr>
+    <tr>
+      <td><strong>ALB Access Logs</strong></td>
+      <td>HTTP request patterns, error rates, suspicious URIs</td>
+      <td><code>modules/alb/logging.tf</code></td>
+      <td>S3 log analysis; CloudWatch Logs Insights</td>
+    </tr>
+  </table>
+
+  <h3 id="analysis-checklist">4.2 Initial Analysis Checklist</h3>
+  <p>When an alert is received, the on-call engineer performs the following:</p>
+  <ol class="procedure">
+    <li><strong>Acknowledge the alert</strong> &mdash; Record the timestamp, source, and alert details in the incident log.</li>
+    <li><strong>Validate the finding</strong> &mdash; Confirm the alert is not a false positive. Check GuardDuty finding details, cross-reference with CloudTrail, review VPC Flow Logs, and check Security Hub for related findings.</li>
+    <li><strong>Determine scope</strong> &mdash; Identify all affected resources: EC2 instance, IAM entities, S3 buckets, and KMS keys.</li>
+    <li><strong>Assign severity</strong> &mdash; Use the classification table in <a href="#severity-levels">Section 3.1</a>.</li>
+    <li><strong>Notify the Incident Commander</strong> &mdash; If severity is SEV-1 or SEV-2, page the IC immediately.</li>
+    <li><strong>Begin evidence preservation</strong> &mdash; Before taking containment actions, capture EC2 metadata via SSM, create EBS snapshots, export CloudTrail events, screenshot findings, and record current SG/WAF configuration.</li>
+  </ol>
+
+  <h3 id="evidence">4.3 Evidence Preservation</h3>
+  <div class="callout callout-important">
+    <strong>Chain of Custody</strong>
+    All evidence must be preserved with chain-of-custody documentation. Tag all forensic artifacts with the incident ID and capture timestamp.
+  </div>
+  <ul>
+    <li><strong>EBS Snapshots</strong>: Create snapshots of root and data volumes before any containment action. Tag with <code>Incident-ID</code> and <code>Timestamp</code>.</li>
+    <li><strong>CloudTrail Logs</strong>: Immutable in S3 with log file validation enabled. Export relevant time window to a separate forensics prefix.</li>
+    <li><strong>VPC Flow Logs</strong>: Retained in CloudWatch Logs (365-day retention). Export relevant time ranges to S3.</li>
+    <li><strong>Memory Capture</strong>: For SEV-1, use SSM Run Command to capture process listings, network connections, and memory dumps before isolation.</li>
+    <li><strong>WAF Logs</strong>: Export relevant WAF log entries from CloudWatch Logs for the incident time window.</li>
+  </ul>
+
+  <hr>
+
+  <!-- Section 5 -->
+  <h2 id="containment">5. Containment Strategies</h2>
+
+  <h3 id="immediate-containment">5.1 Immediate Containment (Short-Term)</h3>
+
+  <h4>5.1.1 Network Isolation via Security Group</h4>
+  <p>Isolate the EC2 instance by replacing its security group with a forensics-only group that blocks all inbound/outbound traffic except SSM:</p>
+  <pre><code># Create forensics security group (if not pre-staged)
+aws ec2 create-security-group \
+  --group-name "incident-forensics-sg" \
+  --description "Forensics isolation - incident response" \
+  --vpc-id &lt;vpc-id&gt;
+
+# Allow only SSM endpoints (required for investigation access)
+aws ec2 authorize-security-group-egress \
+  --group-id &lt;forensics-sg-id&gt; \
+  --protocol tcp --port 443 \
+  --cidr 0.0.0.0/0
+
+# Swap the instance security groups
+aws ec2 modify-instance-attribute \
+  --instance-id &lt;instance-id&gt; \
+  --groups &lt;forensics-sg-id&gt;</code></pre>
+
+  <div class="callout callout-info">
+    <strong>SSM Access</strong>
+    The EC2 instance resides in a private subnet with no public IP. SSM Session Manager access is maintained through VPC endpoints (<code>modules/networking/endpoints.tf</code>) and does not require inbound security group rules.
+  </div>
+
+  <h4>5.1.2 Block Malicious IPs via WAF</h4>
+  <p>Add offending IP addresses to a WAF IP set block rule:</p>
+  <pre><code># Create or update WAF IP set
+aws wafv2 create-ip-set \
+  --name "incident-block-list" \
+  --scope REGIONAL \
+  --ip-address-version IPV4 \
+  --addresses &lt;malicious-ip&gt;/32</code></pre>
+  <p>The existing WAF configuration (<code>modules/waf/waf.tf</code>) includes rate limiting at 2000 requests per 5 minutes. For active attacks, temporarily reduce this threshold.</p>
+
+  <h4>5.1.3 Disable Compromised Accounts</h4>
+  <p><strong>GitLab accounts</strong> &mdash; Block the user via SSM session:</p>
+  <pre><code># Via SSM session on the EC2 instance
+sudo gitlab-rails runner "User.find_by(username: '&lt;username&gt;').block!"</code></pre>
+
+  <p><strong>IAM credentials</strong> &mdash; If AWS credentials are compromised:</p>
+  <pre><code># Deactivate access keys
+aws iam update-access-key --user-name &lt;user&gt; \
+  --access-key-id &lt;key-id&gt; --status Inactive
+
+# Revoke all active sessions for an IAM role
+aws iam put-role-policy --role-name &lt;role&gt; \
+  --policy-name DenyAll --policy-document \
+  '{"Version":"2012-10-17","Statement":[{"Effect":"Deny","Action":"*","Resource":"*"}]}'</code></pre>
+
+  <h4>5.1.4 Revoke GitLab Personal Access Tokens</h4>
+  <p>If PATs are suspected compromised:</p>
+  <pre><code># Via SSM session -- revoke all PATs for a user
+sudo gitlab-rails runner \
+  "PersonalAccessToken.where(user: User.find_by(username: '&lt;username&gt;')).each(&amp;:revoke!)"</code></pre>
+
+  <h3 id="extended-containment">5.2 Extended Containment</h3>
+  <p>If the initial containment does not resolve the threat:</p>
+  <ol>
+    <li><strong>Detach ALB target group</strong> &mdash; Remove the EC2 instance from the ALB target group to stop all user traffic while preserving the instance for forensics.</li>
+    <li><strong>Rotate all secrets</strong> &mdash; Use Secrets Manager to rotate the GitLab root password and any other stored secrets.</li>
+    <li><strong>Rotate KMS keys</strong> &mdash; If key compromise is suspected, create new CMKs and re-encrypt all data.</li>
+    <li><strong>Disable VPC endpoints</strong> &mdash; If data exfiltration via AWS APIs is suspected, restrict VPC endpoint policies.</li>
+    <li><strong>Enable enhanced monitoring</strong> &mdash; Increase VPC Flow Log aggregation interval, enable additional CloudWatch metrics.</li>
+  </ol>
+
+  <hr>
+
+  <!-- Section 6 -->
+  <h2 id="eradication-recovery">6. Eradication and Recovery</h2>
+
+  <h3 id="eradication">6.1 Eradication</h3>
+
+  <h4>6.1.1 Determine Root Cause</h4>
+  <p>Before rebuilding, establish the root cause using:</p>
+  <ul>
+    <li><strong>CloudTrail</strong>: Identify the initial unauthorized action and method of entry</li>
+    <li><strong>GuardDuty findings</strong>: Determine threat type and attack vector</li>
+    <li><strong>VPC Flow Logs</strong>: Trace network-level activity</li>
+    <li><strong>Inspector findings</strong>: Identify exploited vulnerabilities</li>
+    <li><strong>ClamAV logs</strong>: Identify malware artifacts</li>
+    <li><strong>GitLab audit logs</strong>: Review application-level activity (<code>/var/log/gitlab/</code>)</li>
+  </ul>
+
+  <h4>6.1.2 Remove Threat Artifacts</h4>
+  <ul>
+    <li>Terminate the compromised EC2 instance (after forensic snapshots are captured)</li>
+    <li>Delete any unauthorized IAM users, roles, or policies</li>
+    <li>Remove any unauthorized S3 bucket policies or object ACLs</li>
+    <li>Revoke all GitLab personal access tokens system-wide if scope is uncertain</li>
+    <li>Clean or quarantine any ClamAV-identified malware</li>
+  </ul>
+
+  <h3 id="recovery">6.2 Recovery</h3>
+
+  <h4>6.2.1 Rebuild from Terraform</h4>
+  <p>The entire infrastructure is defined as code. Rebuild with a clean state:</p>
+  <pre><code>cd terraform/
+
+# Taint the compromised EC2 instance to force replacement
+terraform taint module.gitlab.aws_instance.gitlab
+
+# Plan and review the rebuild
+terraform plan -out=recovery.tfplan
+
+# Apply the recovery plan
+terraform apply recovery.tfplan</code></pre>
+
+  <p>The <code>user_data.sh</code> bootstrap script will install and configure GitLab CE, apply hardened <code>gitlab.rb</code> configuration (2FA, password policy, session timeouts), install ClamAV, configure CloudWatch Logs agent, and set up daily backup cron jobs.</p>
+
+  <h4>6.2.2 Restore GitLab Data from S3 Backup</h4>
+  <pre><code># Via SSM session on the new EC2 instance
+
+# List available backups
+aws s3 ls s3://&lt;backup-bucket&gt;/gitlab-backups/ --recursive
+
+# Download the most recent clean backup (pre-incident)
+aws s3 cp s3://&lt;backup-bucket&gt;/gitlab-backups/&lt;timestamp&gt;_gitlab_backup.tar \
+  /var/opt/gitlab/backups/
+
+# Restore GitLab data
+sudo gitlab-backup restore BACKUP=&lt;timestamp&gt;
+
+# Restore configuration
+aws s3 cp s3://&lt;backup-bucket&gt;/gitlab-config-backups/latest/ \
+  /etc/gitlab/ --recursive
+sudo gitlab-ctl reconfigure</code></pre>
+
+  <h4>6.2.3 Secret Rotation</h4>
+  <p>Rotate all secrets after a confirmed compromise:</p>
+  <table>
+    <tr><th>Secret</th><th>Rotation Method</th></tr>
+    <tr><td>GitLab root password</td><td>Secrets Manager rotation; update via <code>gitlab-rails console</code></td></tr>
+    <tr><td><code>gitlab-secrets.json</code></td><td>Restore from pre-incident Secrets Manager backup, then rotate Rails secret key base</td></tr>
+    <tr><td>KMS keys</td><td>Create new CMKs via Terraform; re-encrypt all data stores</td></tr>
+    <tr><td>ACM certificate</td><td>Request new certificate if private key compromise is suspected</td></tr>
+    <tr><td>IAM instance profile</td><td>Terraform will create new role/profile on instance replacement</td></tr>
+    <tr><td>GitLab PATs</td><td>Revoke all tokens; users generate new tokens after recovery</td></tr>
+  </table>
+
+  <h4>6.2.4 Verification</h4>
+  <p>Before returning the system to service:</p>
+  <ol class="procedure">
+    <li><strong>Run <code>terraform plan</code></strong> &mdash; Confirm no drift from the defined infrastructure state.</li>
+    <li><strong>Verify Security Hub compliance</strong> &mdash; Check NIST 800-53 v5 findings dashboard.</li>
+    <li><strong>Run Inspector scan</strong> &mdash; Confirm no outstanding critical CVEs.</li>
+    <li><strong>Validate ClamAV</strong> &mdash; Run a full system scan on the new instance.</li>
+    <li><strong>Test GitLab functionality</strong> &mdash; Verify web UI, Git push/pull, 2FA enforcement, and backup jobs.</li>
+    <li><strong>Confirm monitoring</strong> &mdash; Verify CloudWatch alarms, GuardDuty, and SNS notifications are active.</li>
+    <li><strong>Review security groups</strong> &mdash; Confirm production security groups are applied (not forensics SG).</li>
+    <li><strong>Test WAF</strong> &mdash; Send test requests to validate WAF rules are functioning.</li>
+  </ol>
+
+  <hr>
+
+  <!-- Section 7 -->
+  <h2 id="post-incident">7. Post-Incident Activity</h2>
+
+  <h3>7.1 Lessons Learned</h3>
+  <p>Conduct a post-incident review within <strong>5 business days</strong> of incident closure. Document:</p>
+  <ul>
+    <li><strong>Timeline</strong>: Minute-by-minute reconstruction from detection to resolution</li>
+    <li><strong>Root cause</strong>: Technical root cause and contributing factors</li>
+    <li><strong>Detection effectiveness</strong>: How was the incident detected? What was the detection latency?</li>
+    <li><strong>Response effectiveness</strong>: Were containment and eradication procedures adequate?</li>
+    <li><strong>What worked well</strong>: Identify effective processes, tools, and team actions</li>
+    <li><strong>What needs improvement</strong>: Identify gaps in detection, response, or communication</li>
+    <li><strong>Action items</strong>: Specific, assigned, time-bound remediation tasks</li>
+  </ul>
+
+  <h3>7.2 Compliance Documentation Updates</h3>
+  <p>After every SEV-1 or SEV-2 incident, update the following:</p>
+  <table>
+    <tr><th>Document</th><th>Update Required</th></tr>
+    <tr><td>This Incident Response Plan</td><td>Incorporate lessons learned; update runbooks</td></tr>
+    <tr><td>DoD IL2 Compliance Mapping</td><td>Update control implementation status if gaps were identified</td></tr>
+    <tr><td>System Security Plan (SSP)</td><td>Document new risks, controls, or compensating measures</td></tr>
+    <tr><td>Risk Assessment</td><td>Re-evaluate risk ratings based on incident</td></tr>
+    <tr><td>Terraform configuration</td><td>Implement any infrastructure hardening identified during response</td></tr>
+    <tr><td>Checkov policies</td><td>Add custom policies for newly identified misconfigurations</td></tr>
+  </table>
+
+  <h3>7.3 Timeline Documentation</h3>
+  <p>Maintain a structured incident timeline:</p>
+  <table>
+    <tr><th>Timestamp (UTC)</th><th>Action</th><th>Actor</th><th>Details</th></tr>
+    <tr><td>YYYY-MM-DD HH:MM</td><td>Detection</td><td>[Source]</td><td>Initial alert description</td></tr>
+    <tr><td>YYYY-MM-DD HH:MM</td><td>Triage</td><td>[On-call engineer]</td><td>Severity assigned, IC notified</td></tr>
+    <tr><td>YYYY-MM-DD HH:MM</td><td>Containment</td><td>[Technical Lead]</td><td>Actions taken</td></tr>
+    <tr><td>YYYY-MM-DD HH:MM</td><td>Eradication</td><td>[Technical Lead]</td><td>Root cause removed</td></tr>
+    <tr><td>YYYY-MM-DD HH:MM</td><td>Recovery</td><td>[Technical Lead]</td><td>System restored and verified</td></tr>
+    <tr><td>YYYY-MM-DD HH:MM</td><td>Closure</td><td>[Incident Commander]</td><td>Incident declared resolved</td></tr>
+  </table>
+
+  <h3>7.4 Metrics</h3>
+  <p>Track the following metrics across all incidents:</p>
+  <ul>
+    <li><strong>Mean Time to Detect (MTTD)</strong>: Time from incident occurrence to detection</li>
+    <li><strong>Mean Time to Respond (MTTR)</strong>: Time from detection to initial response action</li>
+    <li><strong>Mean Time to Contain (MTTC)</strong>: Time from detection to successful containment</li>
+    <li><strong>Mean Time to Recover (MTTRec)</strong>: Time from containment to full service restoration</li>
+    <li><strong>False positive rate</strong>: Percentage of alerts that were false positives</li>
+    <li><strong>Incidents by severity</strong>: Monthly breakdown by SEV-1 through SEV-4</li>
+  </ul>
+
+  <hr>
+
+  <!-- Section 8 -->
+  <h2 id="contacts">8. Contact List</h2>
+
+  <div class="callout callout-warning">
+    <strong>Template Section</strong>
+    Replace all placeholder values with actual contact information. This section becomes CUI when populated with real data.
+  </div>
+
+  <h3>8.1 Incident Response Team</h3>
+  <table>
+    <tr><th>Role</th><th>Name</th><th>Email</th><th>Phone</th><th>Alternate</th></tr>
+    <tr><td>Incident Commander (Primary)</td><td>[Name]</td><td>[Email]</td><td>[Phone]</td><td>[Alternate Name]</td></tr>
+    <tr><td>Incident Commander (Backup)</td><td>[Name]</td><td>[Email]</td><td>[Phone]</td><td>&mdash;</td></tr>
+    <tr><td>Technical Lead (Primary)</td><td>[Name]</td><td>[Email]</td><td>[Phone]</td><td>[Alternate Name]</td></tr>
+    <tr><td>Technical Lead (Backup)</td><td>[Name]</td><td>[Email]</td><td>[Phone]</td><td>&mdash;</td></tr>
+    <tr><td>Communications Lead</td><td>[Name]</td><td>[Email]</td><td>[Phone]</td><td>[Alternate Name]</td></tr>
+    <tr><td>System Owner</td><td>[Name]</td><td>[Email]</td><td>[Phone]</td><td>&mdash;</td></tr>
+    <tr><td>ISSO</td><td>[Name]</td><td>[Email]</td><td>[Phone]</td><td>&mdash;</td></tr>
+  </table>
+
+  <h3>8.2 External Contacts</h3>
+  <table>
+    <tr><th>Organization</th><th>Purpose</th><th>Contact Method</th><th>Notes</th></tr>
+    <tr><td>AWS Support</td><td>Infrastructure issues, GuardDuty escalation</td><td>AWS Support Console / [Phone]</td><td>Requires Business or Enterprise support plan</td></tr>
+    <tr><td>CISA (US-CERT)</td><td>Federal incident reporting</td><td>https://www.cisa.gov/report / (888) 282-0870</td><td>Required for federal systems within 72 hours</td></tr>
+    <tr><td>DoD Cyber Crime Center (DC3)</td><td>DoD cyber incident reporting</td><td>https://www.dc3.mil</td><td>Required per DoDI 8530.01</td></tr>
+    <tr><td>DISA JFHQ-DODIN</td><td>DoD network defense coordination</td><td>[Contact method per org policy]</td><td>Category reporting per CJCSM 6510.01B</td></tr>
+    <tr><td>DNS Provider (Cloudflare)</td><td>DNS record changes during incident</td><td>Cloudflare dashboard / [Account email]</td><td>DNS is external to this deployment</td></tr>
+  </table>
+
+  <hr>
+
+  <!-- Section 9 -->
+  <h2 id="reporting">9. Incident Reporting Procedures</h2>
+
+  <div class="callout callout-info">
+    <strong>NIST 800-53 IR-6 Compliance</strong>
+    This section satisfies NIST 800-53 IR-6 (Incident Reporting) requirements. All security incidents must be reported to the appropriate authorities within the timelines specified below.
+  </div>
+
+  <h3 id="internal-reporting">9.1 Internal Reporting</h3>
+  <table>
+    <tr><th>Severity</th><th>Notify</th><th>Timeline</th><th>Method</th></tr>
+    <tr>
+      <td><span class="sev-badge sev-1">SEV-1</span></td>
+      <td>IC, System Owner, ISSO, all IRT members</td>
+      <td><strong>Immediately</strong> (within 15 min)</td>
+      <td>Phone call + SNS alert + email</td>
+    </tr>
+    <tr>
+      <td><span class="sev-badge sev-2">SEV-2</span></td>
+      <td>IC, System Owner, ISSO</td>
+      <td><strong>Within 1 hour</strong></td>
+      <td>Phone call + email</td>
+    </tr>
+    <tr>
+      <td><span class="sev-badge sev-3">SEV-3</span></td>
+      <td>IC, Technical Lead</td>
+      <td><strong>Within 4 hours</strong></td>
+      <td>Email</td>
+    </tr>
+    <tr>
+      <td><span class="sev-badge sev-4">SEV-4</span></td>
+      <td>Technical Lead</td>
+      <td><strong>Within 24 hours</strong></td>
+      <td>Email or ticketing system</td>
+    </tr>
+  </table>
+
+  <h3 id="dod-reporting">9.2 DoD Reporting Requirements</h3>
+  <p>Per DoD Instruction 8530.01 and CJCSM 6510.01B, cyber incidents must be reported to the DoD as follows:</p>
+  <table>
+    <tr><th>Category</th><th>Description</th><th>Timeline</th><th>Report To</th></tr>
+    <tr><td><span class="tag tag-action">CAT 1</span></td><td>Root-level compromise, data exfiltration confirmed</td><td><strong>Within 1 hour</strong></td><td>DC3, JFHQ-DODIN, CISA</td></tr>
+    <tr><td><span class="tag tag-action">CAT 2</span></td><td>Unauthorized user-level access</td><td><strong>Within 1 hour</strong></td><td>DC3, JFHQ-DODIN</td></tr>
+    <tr><td><span class="tag tag-info">CAT 3</span></td><td>Unsuccessful activity attempt (detected and contained)</td><td><strong>Within 24 hours</strong></td><td>DC3</td></tr>
+    <tr><td><span class="tag tag-action">CAT 4</span></td><td>Denial of service</td><td><strong>Within 1 hour</strong> if ongoing</td><td>DC3, JFHQ-DODIN</td></tr>
+    <tr><td><span class="tag tag-info">CAT 5</span></td><td>Non-compliance, policy violation</td><td><strong>Within 24 hours</strong></td><td>ISSO, System Owner</td></tr>
+    <tr><td><span class="tag tag-info">CAT 6</span></td><td>Reconnaissance, probing</td><td><strong>Within 72 hours</strong></td><td>DC3</td></tr>
+    <tr><td><span class="tag tag-action">CAT 7</span></td><td>Malicious logic (malware)</td><td><strong>Within 1 hour</strong></td><td>DC3, JFHQ-DODIN</td></tr>
+  </table>
+
+  <h3 id="cisa-reporting">9.3 CISA Reporting (Federal)</h3>
+  <p>Per CISA Federal Incident Notification Guidelines:</p>
+  <ul>
+    <li><strong>All confirmed incidents</strong> must be reported to CISA within <strong>72 hours</strong> of determination</li>
+    <li><strong>Ransomware attacks</strong> must be reported within <strong>24 hours</strong></li>
+    <li>Reports submitted via <a href="https://www.cisa.gov/report">https://www.cisa.gov/report</a> or by calling (888) 282-0870</li>
+    <li>Include: incident type, date/time of detection, systems affected, indicators of compromise (IOCs), impact assessment</li>
+  </ul>
+
+  <h3>9.4 Incident Report Format</h3>
+  <p>All formal incident reports must include:</p>
+  <ol>
+    <li>Incident identifier (unique tracking number)</li>
+    <li>Date and time of detection (UTC)</li>
+    <li>Date and time of incident occurrence (UTC, if known)</li>
+    <li>Incident category (per DoD categorization above)</li>
+    <li>Severity level (SEV-1 through SEV-4)</li>
+    <li>Systems affected (EC2 instance ID, IP addresses, GitLab version)</li>
+    <li>Description of incident (technical narrative)</li>
+    <li>Impact assessment (data compromised, service disruption duration)</li>
+    <li>Indicators of compromise (IP addresses, file hashes, API calls)</li>
+    <li>Containment actions taken</li>
+    <li>Eradication and recovery actions</li>
+    <li>Current status (ongoing, contained, resolved)</li>
+    <li>Point of contact (name, email, phone)</li>
+  </ol>
+
+  <h3>9.5 Record Retention</h3>
+  <p>All incident records, reports, evidence, and communications must be retained for a minimum of <strong>3 years</strong> per NIST 800-53 AU-11 and DoD records management requirements.</p>
+
+  <hr>
+
+  <!-- Appendix A -->
+  <h2 id="appendix-a">Appendix A: GuardDuty Finding Response Runbook</h2>
+
+  <h3>A.1 Overview</h3>
+  <p>Amazon GuardDuty continuously monitors the AWS account for malicious activity. This runbook provides step-by-step response procedures for common GuardDuty finding types. GuardDuty is configured in <code>modules/security/guardduty.tf</code> with S3 and malware protection enabled.</p>
+
+  <h3>A.2 Finding Severity Mapping</h3>
+  <table>
+    <tr><th>GuardDuty Severity</th><th>IRP Severity</th><th>Action</th></tr>
+    <tr><td>High (7.0&ndash;8.9)</td><td><span class="sev-badge sev-1">SEV-1</span></td><td>Immediate response; page IC</td></tr>
+    <tr><td>Medium (4.0&ndash;6.9)</td><td><span class="sev-badge sev-2">SEV-2</span> or <span class="sev-badge sev-3">SEV-3</span></td><td>Investigate within 1&ndash;4 hours</td></tr>
+    <tr><td>Low (1.0&ndash;3.9)</td><td><span class="sev-badge sev-4">SEV-4</span></td><td>Review within 24 hours</td></tr>
+  </table>
+
+  <h3>A.3 Response by Finding Type</h3>
+
+  <h4>Backdoor Findings (e.g., <code>Backdoor:EC2/C&amp;CActivity.B</code>)</h4>
+  <p><span class="sev-badge sev-1">SEV-1</span></p>
+  <ol class="procedure">
+    <li><strong>Immediately isolate</strong> the EC2 instance (<a href="#immediate-containment">Section 5.1.1</a> &mdash; swap to forensics SG).</li>
+    <li>Create EBS snapshots for forensic analysis.</li>
+    <li>Capture running processes via SSM: <code>ps auxf</code>, <code>ss -tlnp</code>, <code>netstat -an</code>.</li>
+    <li>Check ClamAV scan results: <code>sudo clamscan -r /var/opt/gitlab/</code></li>
+    <li>Review VPC Flow Logs for C2 communication destinations.</li>
+    <li>Cross-reference destination IPs with GuardDuty threat intelligence.</li>
+    <li>Rebuild the EC2 instance from Terraform (<a href="#recovery">Section 6.2.1</a>).</li>
+    <li>Report as <span class="tag tag-action">DoD CAT 1</span> within 1 hour.</li>
+  </ol>
+
+  <h4>CryptoCurrency Findings (e.g., <code>CryptoCurrency:EC2/BitcoinTool.B</code>)</h4>
+  <p><span class="sev-badge sev-1">SEV-1</span></p>
+  <ol class="procedure">
+    <li><strong>Immediately isolate</strong> the EC2 instance.</li>
+    <li>Capture process listing and CPU utilization via SSM.</li>
+    <li>Identify the mining process: <code>top -bn1</code>, <code>ps aux | grep -i mine</code>.</li>
+    <li>Create EBS snapshots.</li>
+    <li>Terminate the compromised instance and rebuild from Terraform.</li>
+    <li>Investigate initial access vector via CloudTrail.</li>
+    <li>Report as <span class="tag tag-action">DoD CAT 7</span> (malicious logic) within 1 hour.</li>
+  </ol>
+
+  <h4>UnauthorizedAccess Findings (e.g., <code>UnauthorizedAccess:IAMUser/MaliciousIPCaller</code>)</h4>
+  <p><span class="sev-badge sev-2">SEV-2</span></p>
+  <ol class="procedure">
+    <li>Identify the IAM entity from the finding details.</li>
+    <li>Check CloudTrail for all API calls made by this entity in the last 24 hours.</li>
+    <li>If the entity is the GitLab instance role: review instance metadata access logs (IMDSv2 required), check for credential exfiltration, rotate the instance role via Terraform.</li>
+    <li>If the entity is a human IAM user: deactivate all access keys, revoke active sessions, reset console password.</li>
+    <li>Document all affected resources and API calls.</li>
+    <li>Report as <span class="tag tag-action">DoD CAT 2</span> within 1 hour.</li>
+  </ol>
+
+  <h4>Recon Findings (e.g., <code>Recon:EC2/PortProbeUnprotectedPort</code>)</h4>
+  <p><span class="sev-badge sev-3">SEV-3</span></p>
+  <ol class="procedure">
+    <li>Review the source IP in the finding.</li>
+    <li>Check WAF logs for additional activity from this IP.</li>
+    <li>Add the IP to the WAF block list if activity is persistent (<a href="#immediate-containment">Section 5.1.2</a>).</li>
+    <li>Review security group rules to confirm no unintended open ports.</li>
+    <li>Verify the ALB is the only public-facing component.</li>
+    <li>Report as <span class="tag tag-info">DoD CAT 6</span> within 72 hours.</li>
+  </ol>
+
+  <h4>Trojan Findings (e.g., <code>Trojan:EC2/PhishingDomainRequest!DNS</code>)</h4>
+  <p><span class="sev-badge sev-1">SEV-1</span></p>
+  <ol class="procedure">
+    <li><strong>Immediately isolate</strong> the EC2 instance.</li>
+    <li>Run ClamAV full scan via SSM: <code>sudo clamscan -r / --exclude-dir=/proc --exclude-dir=/sys</code></li>
+    <li>Check DNS query logs for the phishing domain.</li>
+    <li>Create EBS snapshots for forensic analysis.</li>
+    <li>Identify the process making the DNS request.</li>
+    <li>Rebuild from Terraform and restore from a known-clean backup.</li>
+    <li>Report as <span class="tag tag-action">DoD CAT 7</span> within 1 hour.</li>
+  </ol>
+
+  <h4>Malware Findings (GuardDuty Malware Protection)</h4>
+  <p><span class="sev-badge sev-1">SEV-1</span></p>
+  <ol class="procedure">
+    <li>Review the GuardDuty malware finding for file path and hash.</li>
+    <li><strong>Immediately isolate</strong> the EC2 instance.</li>
+    <li>Cross-reference with ClamAV detection logs.</li>
+    <li>Create EBS snapshots (GuardDuty may have already created a snapshot for scanning).</li>
+    <li>Identify how the malware was introduced (file upload, package install, lateral movement).</li>
+    <li>Rebuild from Terraform; restore from pre-infection backup.</li>
+    <li>Report as <span class="tag tag-action">DoD CAT 7</span> within 1 hour.</li>
+  </ol>
+
+  <h3>A.4 False Positive Handling</h3>
+  <p>If a GuardDuty finding is determined to be a false positive after investigation:</p>
+  <ol>
+    <li>Document the investigation and reasoning in the incident log.</li>
+    <li>Archive the finding in GuardDuty (do not suppress without documentation).</li>
+    <li>If the finding is recurring and confirmed benign, create a suppression filter with documented justification.</li>
+    <li>Review suppression filters quarterly to ensure they remain valid.</li>
+  </ol>
+
+  <hr>
+
+  <!-- Appendix B -->
+  <h2 id="appendix-b">Appendix B: Unauthorized API Call Response Runbook</h2>
+
+  <h3>B.1 Overview</h3>
+  <p>CloudTrail captures all AWS API calls. A CloudWatch metric filter in <code>modules/monitoring/cloudwatch.tf</code> triggers an alarm on unauthorized API calls (those returning <code>AccessDenied</code> or <code>UnauthorizedAccess</code> error codes). This runbook provides the response procedure.</p>
+
+  <h3>B.2 Detection</h3>
+  <p>The CloudWatch alarm <code>UnauthorizedAPICalls</code> fires when the metric filter detects API calls with the following error codes in CloudTrail:</p>
+  <ul>
+    <li><code>AccessDenied</code></li>
+    <li><code>UnauthorizedAccess</code></li>
+    <li><code>Client.UnauthorizedAccess</code></li>
+  </ul>
+
+  <h3>B.3 Response Procedure</h3>
+
+  <h4>Step 1: Retrieve the CloudTrail Events</h4>
+  <pre><code># Query CloudTrail for unauthorized calls in the last hour
+aws cloudtrail lookup-events \
+  --lookup-attributes AttributeKey=EventName,AttributeValue=&lt;event-name&gt; \
+  --start-time $(date -u -d '1 hour ago' +%Y-%m-%dT%H:%M:%SZ) \
+  --end-time $(date -u +%Y-%m-%dT%H:%M:%SZ) \
+  --query 'Events[?contains(CloudTrailEvent, `AccessDenied`)]'</code></pre>
+  <p>Alternatively, use CloudWatch Logs Insights:</p>
+  <pre><code>fields @timestamp, eventName, errorCode, sourceIPAddress, userIdentity.arn
+| filter errorCode in ["AccessDenied", "UnauthorizedAccess", "Client.UnauthorizedAccess"]
+| sort @timestamp desc
+| limit 50</code></pre>
+
+  <h4>Step 2: Analyze the Source</h4>
+  <table>
+    <tr><th>Source Type</th><th>Likely Cause</th><th>Action</th></tr>
+    <tr>
+      <td>GitLab instance role</td>
+      <td>IAM policy too restrictive or GitLab attempting an action outside its scope</td>
+      <td>Review and update IAM policy in Terraform; usually a configuration issue</td>
+    </tr>
+    <tr>
+      <td>Unknown IAM user or role</td>
+      <td>Potential compromised credentials</td>
+      <td>Escalate to SEV-2; deactivate credentials; investigate source IP</td>
+    </tr>
+    <tr>
+      <td>Root account</td>
+      <td>Root usage (should never occur in production)</td>
+      <td>Escalate to SEV-1; investigate immediately</td>
+    </tr>
+    <tr>
+      <td>AWS service</td>
+      <td>Service-linked role permission issue</td>
+      <td>Review service configuration; typically not a security incident</td>
+    </tr>
+  </table>
+
+  <h4>Step 3: Determine if Malicious</h4>
+  <p>Indicators of malicious unauthorized API calls:</p>
+  <ul>
+    <li>Source IP is not from known corporate or AWS service ranges</li>
+    <li>API calls are reconnaissance-oriented (<code>Describe*</code>, <code>List*</code>, <code>Get*</code> across many services)</li>
+    <li>Calls are made outside business hours</li>
+    <li>The IAM entity does not correspond to known personnel or automation</li>
+    <li>Multiple different API actions are attempted in rapid succession (enumeration pattern)</li>
+  </ul>
+
+  <h4>Step 4: Respond Based on Assessment</h4>
+  <p><strong>If benign</strong> (e.g., IAM policy needs update):</p>
+  <ol>
+    <li>Document the finding.</li>
+    <li>Create a Terraform change to update the IAM policy.</li>
+    <li>Run <code>terraform plan</code> and <code>terraform apply</code>.</li>
+    <li>Monitor for resolution of the alarm.</li>
+  </ol>
+  <p><strong>If suspicious or malicious</strong>:</p>
+  <ol>
+    <li>Assign severity per <a href="#severity-levels">Section 3</a>.</li>
+    <li>Follow containment procedures in <a href="#containment">Section 5</a>.</li>
+    <li>Deactivate the affected IAM credentials.</li>
+    <li>Review all API calls made by the entity in the last 7 days.</li>
+    <li>Check for persistence mechanisms (new IAM users, roles, policies, Lambda functions, EC2 instances).</li>
+    <li>Report per <a href="#reporting">Section 9</a>.</li>
+  </ol>
+
+  <h4>Step 5: Tune the Alarm</h4>
+  <p>If the alarm generates excessive false positives from known benign sources:</p>
+  <ol>
+    <li>Update the CloudWatch metric filter to exclude specific known-benign patterns.</li>
+    <li>Document the exclusion in the Terraform code with an inline comment.</li>
+    <li>Never broadly suppress unauthorized API call monitoring &mdash; only exclude specific, documented patterns.</li>
+  </ol>
+
+  <h3>B.4 Common Benign Scenarios</h3>
+  <table>
+    <tr><th>Scenario</th><th>Typical Error</th><th>Resolution</th></tr>
+    <tr>
+      <td>GitLab backup job attempting S3 cross-region replication check</td>
+      <td><code>AccessDenied</code> on <code>s3:GetReplicationConfiguration</code></td>
+      <td>Add permission to IAM policy in <code>modules/gitlab/iam.tf</code></td>
+    </tr>
+    <tr>
+      <td>CloudWatch agent attempting to describe instances</td>
+      <td><code>AccessDenied</code> on <code>ec2:DescribeInstances</code></td>
+      <td>Add permission to IAM policy</td>
+    </tr>
+    <tr>
+      <td>SSM agent startup</td>
+      <td><code>AccessDenied</code> on various SSM API calls</td>
+      <td>Verify SSM VPC endpoint and IAM policy</td>
+    </tr>
+    <tr>
+      <td>Config rule evaluation</td>
+      <td><code>AccessDenied</code> on <code>config:PutEvaluations</code></td>
+      <td>Review Config service-linked role</td>
+    </tr>
+  </table>
+
+  <hr>
+
+  <footer>
+    <p>This document satisfies NIST 800-53 Rev 5 controls IR-1, IR-4, IR-5, IR-6, and IR-8 for the self-hosted GitLab CE on AWS deployment. It must be reviewed and updated annually, after any significant incident, or when the system architecture changes.</p>
+  </footer>
+
+</div>
+
+<!-- Sidebar active link highlighting -->
+<script>
+  (function() {
+    const sections = document.querySelectorAll('h2[id]');
+    const navLinks = document.querySelectorAll('.sidebar nav a');
+
+    function onScroll() {
+      let current = '';
+      sections.forEach(function(section) {
+        const top = section.getBoundingClientRect().top;
+        if (top <= 120) current = section.getAttribute('id');
+      });
+      navLinks.forEach(function(link) {
+        link.classList.remove('active');
+        if (link.getAttribute('href') === '#' + current) {
+          link.classList.add('active');
+        }
+      });
+    }
+
+    window.addEventListener('scroll', onScroll);
+    onScroll();
+  })();
+</script>
+
+</body>
+</html>

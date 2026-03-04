@@ -10,7 +10,7 @@ GitLab runs on a single EC2 instance inside private subnets. Developers connect 
 
 AWS service access from the private subnets is handled via VPC endpoints (S3, SSM, Secrets Manager, CloudWatch Logs), minimizing traffic that traverses the NAT Gateway. All data is encrypted at rest using Customer Managed KMS Keys, and all S3 buckets have public access blocked with lifecycle policies that transition objects to Glacier. All resources are tagged with the DoD IL2 `DataClassification` tag.
 
-Continuous monitoring is provided by multi-region CloudTrail (CMK-encrypted with CloudWatch Logs integration), GuardDuty, Security Hub (NIST 800-53 v5 and AWS best practices), AWS Config, and CloudWatch alarms with SNS alerting.
+Continuous monitoring is provided by multi-region CloudTrail (CMK-encrypted with CloudWatch Logs integration), GuardDuty (with EBS malware protection), Security Hub (NIST 800-53 v5 and AWS best practices), AWS Config, Amazon Inspector (EC2 CVE scanning), and CloudWatch alarms with SNS alerting. ClamAV provides on-host antimalware scanning with daily signature updates. Automated Lambda functions handle inactive account deactivation (90-day threshold), Secrets Manager root password rotation (90-day cycle), and CISA KEV advisory monitoring.
 
 ## Modules
 
@@ -80,11 +80,40 @@ AWS WAF WebACL with managed rules, rate limiting, and logging.
 
 ### `security`
 
-GuardDuty, Security Hub, and AWS Config for IL2 continuous monitoring.
+GuardDuty, Security Hub, AWS Config, and Amazon Inspector for IL2 continuous monitoring.
 
-- Amazon GuardDuty threat detection
+- Amazon GuardDuty threat detection with EBS malware protection
 - AWS Security Hub with NIST 800-53 v5 and AWS Foundational Security Best Practices standards
 - AWS Config recorder and delivery channel (CMK-encrypted S3 bucket)
+- Amazon Inspector v2 for EC2 vulnerability scanning (CVEs, CISA KEV)
+
+### `lambda-user-deactivation`
+
+Automated inactive account deactivation (AC-2(3)).
+
+- Weekly Lambda (EventBridge schedule) deactivates GitLab users inactive >90 days
+- Uses GitLab Admin API with PAT stored in Secrets Manager (CMK-encrypted)
+- Skips admin and bot accounts; supports `DRY_RUN` mode (default: enabled)
+- SNS notifications on deactivations; CloudWatch error alarm
+- Runs in VPC private subnets, reaches GitLab via NAT Gateway
+
+### `rotation`
+
+Automated secrets rotation for GitLab root password (IA-5(1)).
+
+- Standard 4-step Secrets Manager rotation Lambda (createSecret, setSecret, testSecret, finishSecret)
+- Applies password on EC2 via SSM Run Command with `gitlab-rails runner`
+- Password handoff via temporary SSM SecureString parameters (never in shell args)
+- 90-day automatic rotation schedule
+- AWSPREVIOUS label preserves rollback capability
+
+### `lambda-cisa-alerts`
+
+CISA Known Exploited Vulnerabilities (KEV) advisory monitoring (SI-5).
+
+- Daily Lambda polls CISA KEV JSON catalog
+- Tracks state in DynamoDB; sends SNS notifications for new entries
+- Complements Inspector's CISA KEV integration
 
 ## Prerequisites
 
@@ -123,6 +152,36 @@ Connect to the instance via SSM:
 aws ssm start-session --target <instance-id>
 ```
 
+### Post-Deployment Steps
+
+1. **Populate GitLab Admin PAT**: Create a GitLab admin Personal Access Token with `api` scope, then store it in Secrets Manager:
+   ```bash
+   aws secretsmanager put-secret-value \
+     --secret-id gitlab/gitlab-admin-pat \
+     --secret-string "glpat-xxxxxxxxxxxxxxxxxxxx"
+   ```
+
+2. **Validate user deactivation Lambda**: The Lambda runs in `DRY_RUN` mode by default. Test invoke to verify:
+   ```bash
+   aws lambda invoke --function-name gitlab-user-deactivation /dev/stdout
+   ```
+   Once validated, set `dry_run = false` in `terraform.tfvars` and re-apply.
+
+3. **Verify Inspector scanning**: Check AWS Console > Inspector > Settings to confirm EC2 scanning is active.
+
+4. **Verify ClamAV**: Connect via SSM and verify:
+   ```bash
+   systemctl status clamd@scan
+   freshclam --version
+   ```
+
+5. **Populate root password secret**: Store the initial GitLab root password for rotation:
+   ```bash
+   aws secretsmanager put-secret-value \
+     --secret-id gitlab/root-password \
+     --secret-string "your-initial-root-password"
+   ```
+
 ## DNS Configuration (Cloudflare)
 
 DNS is managed via Cloudflare, outside of Terraform. After deployment:
@@ -143,3 +202,12 @@ DNS is managed via Cloudflare, outside of Terraform. After deployment:
 | `gitlab_url` | GitLab URL (`https://<domain>`) |
 | `backup_bucket` | S3 backup bucket name |
 | `ssm_connect_command` | SSM session command |
+
+## Documentation
+
+| Document | Description |
+|----------|-------------|
+| [IL2 Compliance Mapping](docs/dod-il2-compliance.md) | NIST 800-53 control mapping with implementation details |
+| [Incident Response Plan](docs/incident-response-plan.md) | IRP per NIST 800-61r2 (IR-4, IR-6) |
+| [System Security Plan](docs/system-security-plan.md) | SSP per NIST 800-18 (PL-2) |
+| [Quick Start Guide](docs/quick-start.html) | Developer onboarding guide |

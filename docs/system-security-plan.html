@@ -1,0 +1,1082 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>System Security Plan -- GitLab CE on AWS (IL2)</title>
+  <style>
+    :root {
+      --bg: #ffffff;
+      --fg: #1a1a2e;
+      --accent: #e74d3c;
+      --accent-dark: #c0392b;
+      --accent-light: #fdf0ee;
+      --border: #e0e0e0;
+      --code-bg: #f5f5f5;
+      --code-border: #ddd;
+      --success: #27ae60;
+      --warning: #f39c12;
+      --gap: #e74d3c;
+      --partial: #f39c12;
+      --sidebar-bg: #fafafa;
+      --sidebar-width: 280px;
+    }
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+
+    /* --- Layout --- */
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+      color: var(--fg);
+      background: var(--bg);
+      line-height: 1.6;
+    }
+    .layout {
+      display: flex;
+      min-height: 100vh;
+    }
+
+    /* --- Sidebar --- */
+    .sidebar {
+      position: fixed;
+      top: 0;
+      left: 0;
+      width: var(--sidebar-width);
+      height: 100vh;
+      background: var(--sidebar-bg);
+      border-right: 1px solid var(--border);
+      overflow-y: auto;
+      padding: 1.5rem 0;
+      z-index: 100;
+    }
+    .sidebar-header {
+      padding: 0 1.2rem 1rem;
+      border-bottom: 2px solid var(--accent);
+      margin-bottom: 0.8rem;
+    }
+    .sidebar-header h2 {
+      font-size: 0.95rem;
+      color: var(--accent);
+      text-transform: uppercase;
+      letter-spacing: 0.05em;
+      margin-bottom: 0.3rem;
+    }
+    .sidebar-header p {
+      font-size: 0.75rem;
+      color: #888;
+    }
+    .sidebar nav ol {
+      list-style: none;
+      padding: 0;
+    }
+    .sidebar nav > ol > li {
+      margin: 0;
+    }
+    .sidebar nav > ol > li > a {
+      display: block;
+      padding: 0.45rem 1.2rem;
+      color: var(--fg);
+      text-decoration: none;
+      font-size: 0.85rem;
+      font-weight: 600;
+      border-left: 3px solid transparent;
+      transition: all 0.15s ease;
+    }
+    .sidebar nav > ol > li > a:hover,
+    .sidebar nav > ol > li > a.active {
+      background: var(--accent-light);
+      border-left-color: var(--accent);
+      color: var(--accent);
+    }
+
+    /* --- Main Content --- */
+    .content {
+      margin-left: var(--sidebar-width);
+      flex: 1;
+      max-width: 900px;
+      padding: 2rem 2.5rem 4rem;
+    }
+
+    /* --- Document Header --- */
+    .doc-header {
+      border-bottom: 3px solid var(--accent);
+      padding-bottom: 1.5rem;
+      margin-bottom: 2rem;
+    }
+    .doc-header h1 {
+      font-size: 1.8rem;
+      margin-bottom: 0.3rem;
+    }
+    .doc-header .subtitle {
+      color: #666;
+      font-size: 1.05rem;
+      margin-bottom: 1rem;
+    }
+    .doc-meta {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 0.3rem 2rem;
+      font-size: 0.85rem;
+      color: #555;
+    }
+    .doc-meta span { display: block; }
+    .doc-meta strong { color: var(--fg); }
+    .classification-banner {
+      display: inline-block;
+      background: var(--accent);
+      color: white;
+      padding: 0.2rem 0.8rem;
+      border-radius: 3px;
+      font-size: 0.8rem;
+      font-weight: 700;
+      letter-spacing: 0.05em;
+      text-transform: uppercase;
+      margin-bottom: 0.5rem;
+    }
+
+    /* --- Typography --- */
+    h2 {
+      font-size: 1.35rem;
+      margin-top: 2.5rem;
+      margin-bottom: 1rem;
+      padding-bottom: 0.4rem;
+      border-bottom: 2px solid var(--accent);
+      scroll-margin-top: 1rem;
+    }
+    h3 {
+      font-size: 1.1rem;
+      margin-top: 1.8rem;
+      margin-bottom: 0.5rem;
+      color: var(--fg);
+    }
+    h4 {
+      font-size: 0.95rem;
+      margin-top: 1.3rem;
+      margin-bottom: 0.4rem;
+    }
+    p { margin-bottom: 0.7rem; }
+    ul, ol { padding-left: 1.5rem; margin-bottom: 0.8rem; }
+    li { margin-bottom: 0.4rem; }
+    a { color: var(--accent); text-decoration: none; }
+    a:hover { text-decoration: underline; }
+    strong { font-weight: 600; }
+    blockquote {
+      background: var(--accent-light);
+      border-left: 4px solid var(--accent);
+      padding: 0.8rem 1.2rem;
+      margin: 1rem 0;
+      border-radius: 0 4px 4px 0;
+      font-size: 0.92rem;
+    }
+    hr {
+      border: none;
+      border-top: 1px solid var(--border);
+      margin: 2rem 0;
+    }
+
+    /* --- Code --- */
+    pre {
+      background: var(--code-bg);
+      border: 1px solid var(--code-border);
+      border-radius: 4px;
+      padding: 1rem;
+      overflow-x: auto;
+      margin: 0.8rem 0;
+      font-size: 0.85rem;
+      line-height: 1.5;
+    }
+    code {
+      font-family: "SF Mono", "Fira Code", "Fira Mono", Menlo, Consolas, monospace;
+      font-size: 0.88em;
+    }
+    p code, li code, td code {
+      background: var(--code-bg);
+      padding: 0.12rem 0.35rem;
+      border-radius: 3px;
+      border: 1px solid var(--code-border);
+      font-size: 0.85em;
+    }
+
+    /* --- Tables --- */
+    table {
+      width: 100%;
+      border-collapse: collapse;
+      margin: 1rem 0 1.5rem;
+      font-size: 0.88rem;
+    }
+    th, td {
+      text-align: left;
+      padding: 0.55rem 0.7rem;
+      border: 1px solid var(--border);
+      vertical-align: top;
+    }
+    th {
+      background: var(--code-bg);
+      font-weight: 600;
+      white-space: nowrap;
+    }
+    tr:nth-child(even) { background: #fafafa; }
+
+    /* --- Status badges --- */
+    .status-implemented {
+      color: var(--success);
+      font-weight: 600;
+    }
+    .status-partial {
+      color: var(--partial);
+      font-weight: 600;
+    }
+    .status-gap {
+      color: var(--gap);
+      font-weight: 600;
+    }
+    .badge {
+      display: inline-block;
+      padding: 0.1rem 0.5rem;
+      border-radius: 3px;
+      font-size: 0.78rem;
+      font-weight: 600;
+      color: white;
+    }
+    .badge-high { background: var(--gap); }
+    .badge-medium { background: var(--partial); }
+    .badge-low { background: #95a5a6; }
+    .badge-implemented { background: var(--success); }
+    .badge-satisfied { background: var(--success); }
+    .family-tag {
+      display: inline-block;
+      background: var(--accent);
+      color: white;
+      padding: 0.12rem 0.5rem;
+      border-radius: 3px;
+      font-size: 0.8rem;
+      font-weight: 600;
+      margin-right: 0.3rem;
+      vertical-align: middle;
+    }
+
+    /* --- Info / Note boxes --- */
+    .note {
+      background: #fff8e1;
+      border-left: 4px solid var(--warning);
+      padding: 0.8rem 1rem;
+      margin: 1rem 0;
+      border-radius: 0 4px 4px 0;
+      font-size: 0.9rem;
+    }
+    .info {
+      background: #e8f4fd;
+      border-left: 4px solid #3498db;
+      padding: 0.8rem 1rem;
+      margin: 1rem 0;
+      border-radius: 0 4px 4px 0;
+      font-size: 0.9rem;
+    }
+
+    /* --- Signature blocks --- */
+    .sig-block {
+      border: 1px solid var(--border);
+      border-radius: 4px;
+      padding: 1.2rem;
+      margin: 1rem 0;
+      background: #fafafa;
+    }
+    .sig-block h4 {
+      margin-top: 0;
+      color: var(--accent);
+    }
+    .sig-field {
+      display: flex;
+      gap: 1rem;
+      margin-bottom: 0.8rem;
+      align-items: baseline;
+    }
+    .sig-field label {
+      font-weight: 600;
+      font-size: 0.85rem;
+      min-width: 100px;
+    }
+    .sig-line {
+      flex: 1;
+      border-bottom: 1px solid #999;
+      min-height: 1.2rem;
+    }
+
+    /* --- Architecture diagram (ASCII) --- */
+    .arch-diagram {
+      background: var(--code-bg);
+      border: 1px solid var(--code-border);
+      border-radius: 4px;
+      padding: 1.2rem 1.5rem;
+      margin: 1rem 0;
+      font-family: "SF Mono", "Fira Code", Menlo, Consolas, monospace;
+      font-size: 0.82rem;
+      line-height: 1.5;
+      white-space: pre;
+      overflow-x: auto;
+    }
+
+    /* --- Monitoring pipeline --- */
+    .pipeline {
+      background: var(--code-bg);
+      border: 1px solid var(--code-border);
+      border-radius: 4px;
+      padding: 1rem 1.2rem;
+      margin: 1rem 0;
+      font-family: "SF Mono", "Fira Code", Menlo, Consolas, monospace;
+      font-size: 0.8rem;
+      line-height: 1.6;
+      white-space: pre;
+      overflow-x: auto;
+    }
+
+    /* --- Footer --- */
+    footer {
+      margin-top: 3rem;
+      padding-top: 1rem;
+      border-top: 2px solid var(--accent);
+      color: #888;
+      font-size: 0.82rem;
+      font-style: italic;
+    }
+
+    /* --- Mobile / Responsive --- */
+    .sidebar-toggle {
+      display: none;
+      position: fixed;
+      top: 0.8rem;
+      left: 0.8rem;
+      z-index: 200;
+      background: var(--accent);
+      color: white;
+      border: none;
+      border-radius: 4px;
+      padding: 0.5rem 0.7rem;
+      font-size: 1rem;
+      cursor: pointer;
+      line-height: 1;
+    }
+    @media (max-width: 960px) {
+      .sidebar {
+        transform: translateX(-100%);
+        transition: transform 0.25s ease;
+        box-shadow: none;
+      }
+      .sidebar.open {
+        transform: translateX(0);
+        box-shadow: 4px 0 20px rgba(0,0,0,0.15);
+      }
+      .content {
+        margin-left: 0;
+        padding: 2rem 1.5rem 4rem;
+      }
+      .sidebar-toggle {
+        display: block;
+      }
+      .doc-meta {
+        grid-template-columns: 1fr;
+      }
+    }
+    @media (max-width: 600px) {
+      .content {
+        padding: 1.5rem 1rem 3rem;
+      }
+      h1 { font-size: 1.4rem; }
+      h2 { font-size: 1.15rem; }
+      table { font-size: 0.82rem; }
+      th, td { padding: 0.4rem 0.5rem; }
+    }
+
+    /* --- Print --- */
+    @media print {
+      .sidebar, .sidebar-toggle { display: none; }
+      .content { margin-left: 0; max-width: 100%; }
+      body { font-size: 11pt; }
+      h2 { page-break-before: always; }
+      h2:first-of-type { page-break-before: avoid; }
+      table { page-break-inside: avoid; }
+    }
+  </style>
+</head>
+<body>
+
+<button class="sidebar-toggle" onclick="toggleSidebar()" aria-label="Toggle navigation">&#9776;</button>
+
+<div class="layout">
+
+  <!-- Sidebar TOC -->
+  <aside class="sidebar" id="sidebar">
+    <div class="sidebar-header">
+      <h2>System Security Plan</h2>
+      <p>GITLAB-IL2 &middot; v1.0 &middot; 2026-03-03</p>
+    </div>
+    <nav>
+      <ol>
+        <li><a href="#identification">1. System Identification</a></li>
+        <li><a href="#description">2. System Description</a></li>
+        <li><a href="#environment">3. System Environment</a></li>
+        <li><a href="#interconnections">4. Interconnections</a></li>
+        <li><a href="#laws">5. Laws &amp; Regulations</a></li>
+        <li><a href="#control-summary">6. Security Control Summary</a></li>
+        <li><a href="#controls">7. Minimum Security Controls</a></li>
+        <li><a href="#personnel">8. Personnel Security</a></li>
+        <li><a href="#physical">9. Physical &amp; Environmental</a></li>
+        <li><a href="#contingency">10. Contingency Planning</a></li>
+        <li><a href="#config-mgmt">11. Configuration Management</a></li>
+        <li><a href="#maintenance">12. Maintenance</a></li>
+        <li><a href="#integrity">13. System Integrity</a></li>
+        <li><a href="#approval">14. Plan Approval &amp; Auth</a></li>
+      </ol>
+    </nav>
+  </aside>
+
+  <!-- Main Content -->
+  <main class="content">
+
+    <!-- Document Header -->
+    <div class="doc-header">
+      <span class="classification-banner">DoD Impact Level 2 (IL2)</span>
+      <h1>System Security Plan</h1>
+      <p class="subtitle">GitLab CE on AWS (IL2)</p>
+      <div class="doc-meta">
+        <span><strong>Document Version:</strong> 1.0</span>
+        <span><strong>Date:</strong> 2026-03-03</span>
+        <span><strong>Prepared By:</strong> <em>[Name, Title]</em></span>
+        <span><strong>Classification:</strong> DoD IL2</span>
+        <span><strong>Reviewed By:</strong> <em>[Name, Title]</em></span>
+        <span><strong>Approved By:</strong> <em>[AO Name, Title]</em></span>
+      </div>
+    </div>
+
+    <blockquote>This document follows the NIST SP 800-18 Rev 1 format: <em>Guide for Developing Security Plans for Federal Information Systems</em>.</blockquote>
+
+    <!-- Section 1: System Identification -->
+    <h2 id="identification">1. System Identification</h2>
+
+    <table>
+      <tr><th>Field</th><th>Value</th></tr>
+      <tr><td>System Name</td><td>GitLab CE on AWS (IL2)</td></tr>
+      <tr><td>System Abbreviation</td><td>GITLAB-IL2</td></tr>
+      <tr><td>System Version</td><td>1.0</td></tr>
+      <tr><td>FISMA System ID</td><td><em>[To be assigned]</em></td></tr>
+      <tr><td>Information System Category</td><td>Moderate (FIPS 199)</td></tr>
+      <tr><td>Data Classification</td><td>DoD Impact Level 2 (IL2) &mdash; Non-CUI public and low-sensitivity CUI</td></tr>
+      <tr><td>Operational Status</td><td>Operational</td></tr>
+      <tr><td>System Type</td><td>Major Application</td></tr>
+    </table>
+
+    <h3>System Owner and Key Roles</h3>
+    <table>
+      <tr><th>Role</th><th>Name</th><th>Organization</th><th>Contact</th></tr>
+      <tr><td>System Owner</td><td><em>[Name]</em></td><td><em>[Org]</em></td><td><em>[Email/Phone]</em></td></tr>
+      <tr><td>Authorizing Official (AO)</td><td><em>[Name]</em></td><td><em>[Org]</em></td><td><em>[Email/Phone]</em></td></tr>
+      <tr><td>ISSO</td><td><em>[Name]</em></td><td><em>[Org]</em></td><td><em>[Email/Phone]</em></td></tr>
+      <tr><td>ISSM</td><td><em>[Name]</em></td><td><em>[Org]</em></td><td><em>[Email/Phone]</em></td></tr>
+      <tr><td>System Administrator</td><td><em>[Name]</em></td><td><em>[Org]</em></td><td><em>[Email/Phone]</em></td></tr>
+    </table>
+
+    <h3>Authorization Boundary</h3>
+    <p>The authorization boundary encompasses all AWS resources provisioned by the Terraform IaC within a single AWS account and region, including:</p>
+    <ul>
+      <li><strong>Compute:</strong> Single EC2 instance (Amazon Linux 2023) running GitLab CE</li>
+      <li><strong>Networking:</strong> VPC with public/private subnets across 2 AZs, NAT Gateway, VPC endpoints, security groups</li>
+      <li><strong>Load Balancing &amp; Edge:</strong> Application Load Balancer (ALB) with AWS WAF</li>
+      <li><strong>Storage:</strong> EBS volumes (root + data), S3 buckets (backups, logs, CloudTrail, Config)</li>
+      <li><strong>Secrets:</strong> AWS Secrets Manager secrets with CMK encryption</li>
+      <li><strong>Encryption:</strong> 3 AWS KMS Customer Managed Keys (general, CloudTrail, EBS)</li>
+      <li><strong>Monitoring:</strong> CloudTrail, CloudWatch, SNS</li>
+      <li><strong>Security Services:</strong> GuardDuty, Security Hub, AWS Config, Amazon Inspector</li>
+      <li><strong>Automation:</strong> Lambda functions (inactive user deactivation, secrets rotation, CISA KEV monitoring)</li>
+      <li><strong>Identity:</strong> IAM roles/policies, ACM certificates</li>
+    </ul>
+    <p><strong>Excluded from boundary:</strong> Cloudflare DNS (external), end-user workstations, AWS management plane (covered by AWS FedRAMP P-ATO).</p>
+
+    <!-- Section 2: System Description -->
+    <h2 id="description">2. System Description / Purpose</h2>
+
+    <h3>Purpose</h3>
+    <p>GitLab CE on AWS (IL2) provides a self-hosted source code management, CI/CD, and collaboration platform for Department of Defense personnel and contractors. The system hosts non-CUI public and low-sensitivity CUI source code repositories, issue trackers, and CI/CD pipelines on infrastructure aligned with DoD Impact Level 2 compliance requirements.</p>
+
+    <h3>Functional Description</h3>
+    <ul>
+      <li><strong>Source Code Management:</strong> Git-based version control with branch management, merge requests, and code review workflows</li>
+      <li><strong>Issue Tracking:</strong> Project management with issues, milestones, and boards</li>
+      <li><strong>CI/CD Pipelines:</strong> Automated build, test, and deployment pipelines</li>
+      <li><strong>Container Registry:</strong> Docker image storage and distribution</li>
+      <li><strong>Wiki &amp; Documentation:</strong> Project-level wikis and documentation hosting</li>
+    </ul>
+
+    <h3>User Base</h3>
+    <ul>
+      <li><strong>Total Users:</strong> Admin-managed accounts only; self-registration disabled</li>
+      <li><strong>User Types:</strong> Administrators, Developers, Maintainers, Guests</li>
+      <li><strong>Authentication:</strong> GitLab native authentication with mandatory TOTP-based 2FA</li>
+      <li><strong>Access Method:</strong> HTTPS (web UI and Git over HTTPS with PATs); no SSH access</li>
+    </ul>
+
+    <h3>Data Handled</h3>
+    <table>
+      <tr><th>Data Type</th><th>Classification</th><th>Storage Location</th></tr>
+      <tr><td>Source code repositories</td><td>IL2</td><td>EBS data volume (CMK-encrypted)</td></tr>
+      <tr><td>GitLab application database</td><td>IL2</td><td>EBS data volume (CMK-encrypted)</td></tr>
+      <tr><td>User credentials (hashed)</td><td>IL2</td><td>EBS data volume (CMK-encrypted)</td></tr>
+      <tr><td>GitLab root password</td><td>IL2</td><td>Secrets Manager (CMK-encrypted)</td></tr>
+      <tr><td>Backup archives</td><td>IL2</td><td>S3 bucket (CMK-encrypted, versioned)</td></tr>
+      <tr><td>Audit logs</td><td>IL2</td><td>S3 / CloudWatch Logs (CMK-encrypted)</td></tr>
+      <tr><td>CI/CD artifacts</td><td>IL2</td><td>EBS data volume (CMK-encrypted)</td></tr>
+    </table>
+
+    <!-- Section 3: System Environment -->
+    <h2 id="environment">3. System Environment</h2>
+
+    <h3>AWS Infrastructure</h3>
+    <table>
+      <tr><th>Component</th><th>Detail</th></tr>
+      <tr><td>Cloud Provider</td><td>Amazon Web Services (AWS)</td></tr>
+      <tr><td>AWS Authorization</td><td>FedRAMP High Provisional ATO (P-ATO)</td></tr>
+      <tr><td>Region</td><td>Configurable via <code>aws_region</code> variable (default: <code>us-east-1</code>)</td></tr>
+      <tr><td>Account Type</td><td>Commercial (non-GovCloud)</td></tr>
+      <tr><td>Data Residency</td><td>US-only; all resources region-bound</td></tr>
+    </table>
+
+    <h3>Network Architecture</h3>
+    <div class="arch-diagram">Internet
+   |
+   v
+[Cloudflare DNS] --&gt; [ALB + WAF (Public Subnets, 2 AZs)]
+                          |
+                     [TLS 1.3 termination]
+                          |
+                     [HTTP/80 forwarding]
+                          |
+                     [EC2 GitLab CE (Private Subnet)]
+                          |
+                     [NAT Gateway] --&gt; Internet (outbound only)
+                          |
+                     [VPC Endpoints] --&gt; AWS Services (private path)</div>
+
+    <p><strong>Public subnets</strong> (2 AZs): Application Load Balancer, NAT Gateway</p>
+    <p><strong>Private subnets</strong> (2 AZs): EC2 instance (GitLab CE), Lambda functions (ENIs)</p>
+
+    <h4>VPC Endpoints</h4>
+    <table>
+      <tr><th>Endpoint</th><th>Type</th><th>Purpose</th></tr>
+      <tr><td>S3</td><td>Gateway</td><td>Backups, logs, state</td></tr>
+      <tr><td>SSM</td><td>Interface</td><td>Session Manager access</td></tr>
+      <tr><td>SSM Messages</td><td>Interface</td><td>Session Manager messaging</td></tr>
+      <tr><td>EC2 Messages</td><td>Interface</td><td>SSM agent communication</td></tr>
+      <tr><td>Secrets Manager</td><td>Interface</td><td>Secret retrieval</td></tr>
+      <tr><td>CloudWatch Logs</td><td>Interface</td><td>Log delivery</td></tr>
+      <tr><td>KMS</td><td>Interface</td><td>Encryption operations</td></tr>
+    </table>
+
+    <h3>Terraform Module Architecture</h3>
+    <div class="arch-diagram">kms --&gt; networking --&gt; gitlab
+                    --&gt; alb --&gt; waf
+        monitoring (depends on: gitlab.instance_id, kms)
+        security (standalone, uses kms)
+        user_deactivation (depends on: networking, kms, monitoring)
+        rotation (depends on: networking, gitlab, kms)
+        cisa_alerts (depends on: networking, kms, monitoring)</div>
+
+    <table>
+      <tr><th>Module</th><th>Path</th><th>Responsibility</th></tr>
+      <tr><td><strong>kms</strong></td><td><code>modules/kms/</code></td><td>3 CMKs: general (S3, Secrets Manager, CloudWatch, DynamoDB), CloudTrail, EBS. Annual rotation.</td></tr>
+      <tr><td><strong>networking</strong></td><td><code>modules/networking/</code></td><td>VPC, 2 public + 2 private subnets, NAT GW, security groups, 6 VPC endpoints, flow logs, S3 access log bucket.</td></tr>
+      <tr><td><strong>gitlab</strong></td><td><code>modules/gitlab/</code></td><td>EC2 (AL2023), EBS volumes, IAM instance profile, S3 backup bucket, Secrets Manager, <code>user_data.sh</code> bootstrap.</td></tr>
+      <tr><td><strong>alb</strong></td><td><code>modules/alb/</code></td><td>Internet-facing ALB, HTTPS/TLS 1.3, ACM cert, health checks, access logging.</td></tr>
+      <tr><td><strong>waf</strong></td><td><code>modules/waf/</code></td><td>WAFv2 WebACL: OWASP rules, known bad inputs, rate limiting (2000/5min/IP), CloudWatch logging.</td></tr>
+      <tr><td><strong>monitoring</strong></td><td><code>modules/monitoring/</code></td><td>Multi-region CloudTrail, CloudWatch alarms (CPU, status, unauthorized API), SNS alerting.</td></tr>
+      <tr><td><strong>security</strong></td><td><code>modules/security/</code></td><td>GuardDuty (malware protection), Security Hub (NIST 800-53 v5), AWS Config, Amazon Inspector.</td></tr>
+      <tr><td><strong>lambda-user-deactivation</strong></td><td><code>modules/lambda-user-deactivation/</code></td><td>Deactivates inactive accounts (&gt;90 days). Weekly via EventBridge. Implements AC-2(3).</td></tr>
+      <tr><td><strong>rotation</strong></td><td><code>modules/rotation/</code></td><td>Root password rotation via Secrets Manager (90-day cycle). Uses SSM Run Command. Implements IA-5(1).</td></tr>
+      <tr><td><strong>lambda-cisa-alerts</strong></td><td><code>modules/lambda-cisa-alerts/</code></td><td>Polls CISA KEV catalog daily. DynamoDB state tracking. SNS alerts. Implements SI-5.</td></tr>
+    </table>
+
+    <h3>EC2 Instance Configuration</h3>
+    <table>
+      <tr><th>Setting</th><th>Value</th></tr>
+      <tr><td>AMI</td><td>Amazon Linux 2023 (FIPS-validated AMI recommended)</td></tr>
+      <tr><td>Instance Metadata</td><td>IMDSv2 required (<code>http_tokens = "required"</code>)</td></tr>
+      <tr><td>SSH Access</td><td>Disabled; SSH daemon removed during bootstrap</td></tr>
+      <tr><td>Admin Access</td><td>SSM Session Manager only</td></tr>
+      <tr><td>Antimalware</td><td>ClamAV with daily scans and signature updates</td></tr>
+      <tr><td>Monitoring Agent</td><td>CloudWatch Agent (disk, memory, ClamAV logs)</td></tr>
+    </table>
+
+    <!-- Section 4: Interconnections -->
+    <h2 id="interconnections">4. System Interconnections</h2>
+
+    <table>
+      <tr><th>#</th><th>External System</th><th>Direction</th><th>Protocol</th><th>Data Exchanged</th><th>Authorization</th></tr>
+      <tr><td>1</td><td>Cloudflare DNS</td><td>Outbound</td><td>HTTPS/DNS</td><td>DNS records to ALB</td><td>External; outside boundary</td></tr>
+      <tr><td>2</td><td>GitLab Package Repo</td><td>Outbound</td><td>HTTPS</td><td>RPM packages &amp; updates</td><td>Vendor-managed</td></tr>
+      <tr><td>3</td><td>ClamAV Signature DB</td><td>Outbound</td><td>HTTPS</td><td>Malware signatures (daily)</td><td>Open-source project</td></tr>
+      <tr><td>4</td><td>CISA KEV Catalog</td><td>Outbound</td><td>HTTPS</td><td>KEV JSON feed (daily)</td><td>USG public data feed</td></tr>
+      <tr><td>5</td><td>AWS Services (VPC Endpoints)</td><td>Bidirectional</td><td>HTTPS (private)</td><td>S3, SSM, Secrets Mgr, CW Logs, KMS</td><td>AWS FedRAMP High P-ATO</td></tr>
+      <tr><td>6</td><td>AWS Services (NAT GW)</td><td>Outbound</td><td>HTTPS</td><td>CloudTrail, GuardDuty, Security Hub, Config, Inspector, SNS</td><td>AWS FedRAMP High P-ATO</td></tr>
+      <tr><td>7</td><td>End-User Workstations</td><td>Inbound</td><td>HTTPS (TLS 1.3)</td><td>Web UI, Git over HTTPS</td><td>MFA + 15-char password</td></tr>
+      <tr><td>8</td><td>Amazon Linux 2023 Repos</td><td>Outbound</td><td>HTTPS</td><td>OS package updates</td><td>AWS-managed</td></tr>
+    </table>
+
+    <!-- Section 5: Laws -->
+    <h2 id="laws">5. Laws, Regulations, and Policies</h2>
+
+    <table>
+      <tr><th>Authority</th><th>Title</th><th>Applicability</th></tr>
+      <tr><td>DoD CC SRG</td><td>Cloud Computing Security Requirements Guide (v1 R4)</td><td>Defines IL2; permits FedRAMP commercial for IL2</td></tr>
+      <tr><td>FedRAMP</td><td>Federal Risk and Authorization Management Program &mdash; Moderate</td><td>Minimum for IL2; AWS holds FedRAMP High P-ATO</td></tr>
+      <tr><td>NIST SP 800-53 Rev 5</td><td>Security and Privacy Controls</td><td>Moderate baseline controls</td></tr>
+      <tr><td>NIST SP 800-171 Rev 2</td><td>Protecting CUI in Nonfederal Systems</td><td>Applicable if CUI processed</td></tr>
+      <tr><td>NIST SP 800-18 Rev 1</td><td>Guide for Developing Security Plans</td><td>Defines SSP format (this document)</td></tr>
+      <tr><td>FISMA</td><td>Federal Information Security Modernization Act (2014)</td><td>Mandates SSP, risk assessment, continuous monitoring</td></tr>
+      <tr><td>FIPS 199</td><td>Standards for Security Categorization</td><td>System: Moderate (C:M, I:M, A:M)</td></tr>
+      <tr><td>FIPS 140-2/3</td><td>Cryptographic Module Requirements</td><td>FIPS AMI recommended; KMS uses FIPS 140-2 L3 HSMs</td></tr>
+      <tr><td>DoDI 8510.01</td><td>Risk Management Framework for DoD IT</td><td>Governs ATO process</td></tr>
+      <tr><td>EO 14028</td><td>Improving the Nation's Cybersecurity (2021)</td><td>Zero trust, MFA, encryption, logging</td></tr>
+    </table>
+
+    <h3>IL2 Hosting Confirmation</h3>
+    <table>
+      <tr><th>Requirement</th><th>Status</th><th>Evidence</th></tr>
+      <tr><td>FedRAMP Moderate or higher</td><td><span class="status-implemented">Satisfied</span></td><td>AWS FedRAMP <strong>High</strong> P-ATO</td></tr>
+      <tr><td>GovCloud required</td><td><strong>No</strong></td><td>CC SRG permits IL2 on FedRAMP commercial cloud</td></tr>
+      <tr><td>Data residency</td><td><span class="status-implemented">US-only</span></td><td>All resources in US region; backups to second US region</td></tr>
+      <tr><td>Encryption at rest</td><td><span class="status-implemented">CMK</span></td><td>All data encrypted with Customer Managed KMS Keys</td></tr>
+      <tr><td>Encryption in transit</td><td><span class="status-implemented">TLS 1.3</span></td><td>ALB enforces <code>ELBSecurityPolicy-TLS13-1-2-2021-06</code></td></tr>
+    </table>
+
+    <!-- Section 6: Security Control Summary -->
+    <h2 id="control-summary">6. Security Control Summary</h2>
+
+    <p>The full control-by-control mapping is in the companion <a href="dod-il2-compliance.html">DoD IL2 Compliance Mapping</a>. This section summarizes by NIST 800-53 family.</p>
+
+    <table>
+      <tr><th>NIST Family</th><th>Controls</th><th>Impl.</th><th>Partial</th><th>Gap</th><th>Key Implementations</th></tr>
+      <tr>
+        <td><span class="family-tag">AC</span> Access Control</td>
+        <td>7</td><td>5</td><td>0</td><td>2</td>
+        <td>Admin-only accounts, WAF/SG, SSM-only, MFA, DoD banner, inactive deactivation (Lambda)</td>
+      </tr>
+      <tr>
+        <td><span class="family-tag">AU</span> Audit &amp; Accountability</td>
+        <td>6</td><td>5</td><td>1</td><td>0</td>
+        <td>CloudTrail, VPC flow logs, ALB/WAF/S3 logs, 365-day retention</td>
+      </tr>
+      <tr>
+        <td><span class="family-tag">CA</span> Security Assessment</td>
+        <td>1</td><td>1</td><td>0</td><td>0</td>
+        <td>GuardDuty, Security Hub (800-53 v5), AWS Config, Checkov</td>
+      </tr>
+      <tr>
+        <td><span class="family-tag">CM</span> Config Management</td>
+        <td>4</td><td>4</td><td>0</td><td>0</td>
+        <td>Terraform IaC, Checkov, AWS Config, TLS 1.3, IMDSv2</td>
+      </tr>
+      <tr>
+        <td><span class="family-tag">CP</span> Contingency Planning</td>
+        <td>3</td><td>2</td><td>1</td><td>0</td>
+        <td>Daily S3 backups (CMK), Secrets Manager, Terraform recovery</td>
+      </tr>
+      <tr>
+        <td><span class="family-tag">IA</span> Identification &amp; Auth</td>
+        <td>5</td><td>4</td><td>1</td><td>0</td>
+        <td>MFA, 15-char passwords, Secrets Manager, automated rotation (Lambda)</td>
+      </tr>
+      <tr>
+        <td><span class="family-tag">IR</span> Incident Response</td>
+        <td>3</td><td>1</td><td>1</td><td>1</td>
+        <td>CloudWatch alarms, GuardDuty, Security Hub; gap: formal IRP</td>
+      </tr>
+      <tr>
+        <td><span class="family-tag">MP</span> Media Protection</td>
+        <td>1</td><td>0</td><td>1</td><td>0</td>
+        <td><code>DataClassification=IL2</code> tagging; gap: FISMA ID tags</td>
+      </tr>
+      <tr>
+        <td><span class="family-tag">RA</span> Risk Assessment</td>
+        <td>1</td><td>1</td><td>0</td><td>0</td>
+        <td>Inspector, Security Hub, GuardDuty, Checkov</td>
+      </tr>
+      <tr>
+        <td><span class="family-tag">SC</span> System &amp; Comms Protection</td>
+        <td>6</td><td>6</td><td>0</td><td>0</td>
+        <td>WAF, private subnets, TLS 1.3, CMK, VPC endpoints, FIPS AMI</td>
+      </tr>
+      <tr>
+        <td><span class="family-tag">SI</span> System &amp; Info Integrity</td>
+        <td>4</td><td>2</td><td>2</td><td>0</td>
+        <td>CloudWatch, GuardDuty, ClamAV, Inspector, CISA KEV (Lambda)</td>
+      </tr>
+    </table>
+
+    <h3>Overall Posture</h3>
+    <ul>
+      <li><strong>Implemented:</strong> 31 of 41 controls fully implemented</li>
+      <li><strong>Partially Implemented:</strong> 7 controls with enhancement paths identified</li>
+      <li><strong>Gaps:</strong> 3 controls requiring procedural/documentation action</li>
+    </ul>
+
+    <!-- Section 7: Minimum Security Controls -->
+    <h2 id="controls">7. Minimum Security Controls</h2>
+
+    <p>Full detail for each control is in <a href="dod-il2-compliance.html">dod-il2-compliance</a>.</p>
+
+    <h3>Implemented Controls</h3>
+    <table>
+      <tr><th>Control</th><th>Title</th><th>Implementation Summary</th></tr>
+      <tr><td>AC-2</td><td>Account Management</td><td>GitLab native auth, admin-only accounts, RBAC, root password in Secrets Manager</td></tr>
+      <tr><td>AC-2(3)</td><td>Inactive Accounts</td><td>Lambda deactivates accounts inactive &gt;90 days (weekly EventBridge)</td></tr>
+      <tr><td>AC-3</td><td>Access Enforcement</td><td>Security groups (443 only), WAF, least-privilege IAM, no SSH</td></tr>
+      <tr><td>AC-4</td><td>Information Flow</td><td>ALB + WAF + TLS 1.3, private subnets, NAT GW, VPC endpoints</td></tr>
+      <tr><td>AC-7</td><td>Unsuccessful Logon</td><td>GitLab lockout + WAF rate limiting (2000/5min/IP)</td></tr>
+      <tr><td>AC-8</td><td>System Use Notification</td><td>DoD consent banner on GitLab sign-in page</td></tr>
+      <tr><td>AC-17</td><td>Remote Access</td><td>HTTPS + MFA + TLS 1.3; SSM for admin; HTTPS-only Git (PATs)</td></tr>
+      <tr><td>AU-2</td><td>Event Logging</td><td>CloudTrail, VPC flow logs, ALB, WAF, S3 access logs, GitLab audit events</td></tr>
+      <tr><td>AU-3</td><td>Audit Record Content</td><td>CloudTrail (who, what, when, where, outcome); log file validation</td></tr>
+      <tr><td>AU-9</td><td>Protection of Audit Info</td><td>CMK-encrypted, public access blocked, versioned, log file validation</td></tr>
+      <tr><td>AU-11</td><td>Audit Retention</td><td>365-day retention; Glacier tiering at 30&ndash;90 days</td></tr>
+      <tr><td>AU-12</td><td>Audit Generation</td><td>Automated across CloudTrail, flow logs, ALB, WAF, S3, Config</td></tr>
+      <tr><td>CA-7</td><td>Continuous Monitoring</td><td>GuardDuty (+ malware), Security Hub (800-53 v5), Config, Checkov</td></tr>
+      <tr><td>CM-2</td><td>Baseline Config</td><td>Terraform IaC, AL2023, <code>user_data.sh</code>, <code>gitlab.rb</code>, Config</td></tr>
+      <tr><td>CM-3</td><td>Change Control</td><td>Terraform plan/apply, Checkov, Git audit, Config drift detection</td></tr>
+      <tr><td>CM-6</td><td>Config Settings</td><td>TLS 1.3, IMDSv2, KMS rotation, header validation, GitLab hardening</td></tr>
+      <tr><td>CM-7</td><td>Least Functionality</td><td>443/80 only; SSH removed; HTTPS-only Git</td></tr>
+      <tr><td>CP-9</td><td>System Backup</td><td>Daily data + config to S3 (CMK, versioned, Glacier lifecycle)</td></tr>
+      <tr><td>CP-10</td><td>System Recovery</td><td>Terraform rebuild, S3 restore, Secrets Manager, separate data vol</td></tr>
+      <tr><td>IA-2</td><td>User Identification</td><td>GitLab native auth, admin-managed, signup disabled</td></tr>
+      <tr><td>IA-2(1)</td><td>MFA</td><td>TOTP required, zero grace period</td></tr>
+      <tr><td>IA-5</td><td>Authenticator Mgmt</td><td>15-char minimum, Secrets Manager, PAT-based Git auth</td></tr>
+      <tr><td>IA-5(1)</td><td>Authenticator Rotation</td><td>Automated Lambda root password rotation (90-day cycle)</td></tr>
+      <tr><td>IA-8</td><td>Non-Org Users</td><td>Signup disabled, admin-only accounts, private defaults</td></tr>
+      <tr><td>IR-5</td><td>Incident Monitoring</td><td>GuardDuty, Security Hub, CloudWatch, WAF logs, CloudTrail</td></tr>
+      <tr><td>RA-5</td><td>Vulnerability Scanning</td><td>Inspector (EC2 CVE), Security Hub, GuardDuty, Checkov</td></tr>
+      <tr><td>SC-5</td><td>DoS Protection</td><td>WAF rate limiting, ALB load distribution, GitLab rate limiting</td></tr>
+      <tr><td>SC-7</td><td>Boundary Protection</td><td>Private subnets, WAF (OWASP + bad inputs), VPC endpoints</td></tr>
+      <tr><td>SC-8</td><td>Transmission Confidentiality</td><td>TLS 1.3 at ALB, HTTPS for all traffic, VPC endpoints</td></tr>
+      <tr><td>SC-12</td><td>Crypto Key Mgmt</td><td>3 CMKs with annual rotation, ACM certs</td></tr>
+      <tr><td>SC-13</td><td>Cryptographic Protection</td><td>FIPS AMI, TLS 1.3, CMK, KMS FIPS 140-2 L3 HSMs</td></tr>
+      <tr><td>SC-28</td><td>Info at Rest</td><td>CMK-encrypted EBS, S3, Secrets Mgr; AES-256 for ALB logs</td></tr>
+      <tr><td>SI-3</td><td>Malicious Code Protection</td><td>ClamAV (daily scan + updates), GuardDuty malware (EBS)</td></tr>
+      <tr><td>SI-4</td><td>System Monitoring</td><td>CloudWatch, CloudTrail, flow logs, WAF, GuardDuty, Security Hub, Config</td></tr>
+      <tr><td>SI-5</td><td>Security Alerts</td><td>CISA KEV Lambda (daily), CloudWatch alarms, Security Hub</td></tr>
+    </table>
+
+    <h3>Remaining Gaps</h3>
+    <table>
+      <tr><th>Control</th><th>Title</th><th>Gap</th><th>Remediation</th><th>Priority</th></tr>
+      <tr><td>AU-6</td><td>Audit Review</td><td>No centralized SIEM</td><td>Deploy OpenSearch or integrate SIEM</td><td><span class="badge badge-high">High</span></td></tr>
+      <tr><td>CP-6</td><td>Alternate Storage</td><td>Replication not verified</td><td>Validate cross-region replication</td><td><span class="badge badge-medium">Medium</span></td></tr>
+      <tr><td>IR-1</td><td>IR Policy</td><td>No formal policy</td><td>Draft IRP with roles and escalation</td><td><span class="badge badge-high">High</span></td></tr>
+      <tr><td>IR-6</td><td>Incident Reporting</td><td>No procedures documented</td><td>Document reporting and contacts</td><td><span class="badge badge-high">High</span></td></tr>
+      <tr><td>IR-8</td><td>IR Plan</td><td>No formal IRP</td><td>Draft and conduct tabletop exercise</td><td><span class="badge badge-high">High</span></td></tr>
+      <tr><td>MP-3</td><td>Media Marking</td><td>No FISMA ID tags</td><td>Add FISMA tags to <code>default_tags</code></td><td><span class="badge badge-low">Low</span></td></tr>
+      <tr><td>AT-2</td><td>Security Training</td><td>No formal program</td><td>Establish annual training</td><td><span class="badge badge-medium">Medium</span></td></tr>
+      <tr><td>SC-8(1)</td><td>End-to-end TLS</td><td>ALB-to-EC2 is HTTP</td><td>Configure GitLab nginx HTTPS</td><td><span class="badge badge-medium">Medium</span></td></tr>
+    </table>
+
+    <!-- Section 8: Personnel Security -->
+    <h2 id="personnel">8. Personnel Security</h2>
+
+    <h3>Roles and Responsibilities</h3>
+    <table>
+      <tr><th>Role</th><th>Responsibilities</th><th>Min. Clearance</th><th>Account Level</th></tr>
+      <tr><td>Authorizing Official</td><td>Accepts residual risk; issues ATO</td><td><em>[Per org policy]</em></td><td>N/A</td></tr>
+      <tr><td>ISSO</td><td>Security oversight, audit review, incident coordination</td><td><em>[Per org policy]</em></td><td>GitLab Admin</td></tr>
+      <tr><td>System Administrator</td><td>Infrastructure, Terraform, patching, backups</td><td><em>[Per org policy]</em></td><td>GitLab Admin + AWS IAM</td></tr>
+      <tr><td>Developer</td><td>Code, merge requests, CI/CD pipelines</td><td><em>[Per org policy]</em></td><td>GitLab Developer/Maintainer</td></tr>
+      <tr><td>Guest</td><td>Read-only access to selected projects</td><td><em>[Per org policy]</em></td><td>GitLab Guest</td></tr>
+    </table>
+
+    <h3>Separation of Duties</h3>
+    <ul>
+      <li><strong>Infrastructure changes</strong> require Terraform plan review and explicit apply. Git history provides full audit trail.</li>
+      <li><strong>GitLab admin operations</strong> are limited to designated administrators. Signup is disabled.</li>
+      <li><strong>AWS access</strong> is separate from GitLab access. IAM follows least privilege. SSM provides auditable admin access.</li>
+      <li><strong>Secret access</strong> is restricted via IAM and KMS key policies. Lambda functions have scoped permissions.</li>
+    </ul>
+
+    <h3>Access Termination</h3>
+    <ul>
+      <li>Accounts deactivated within <em>[defined SLA]</em> of personnel departure.</li>
+      <li>Automated deactivation of accounts inactive &gt;90 days via Lambda (AC-2(3)).</li>
+      <li>SSM access revoked by removing IAM permissions.</li>
+    </ul>
+
+    <!-- Section 9: Physical and Environmental -->
+    <h2 id="physical">9. Physical and Environmental Security</h2>
+
+    <h3>AWS Shared Responsibility Model</h3>
+    <p>Physical and environmental security for the underlying infrastructure is the responsibility of AWS under the Shared Responsibility Model.</p>
+
+    <table>
+      <tr><th>Control</th><th>AWS Responsibility</th><th>Evidence</th></tr>
+      <tr><td>PE-1 Physical Security Policy</td><td>Manages data center access policies</td><td>FedRAMP High P-ATO; SOC 2 Type II</td></tr>
+      <tr><td>PE-2 Access Authorizations</td><td>Multi-factor data center access</td><td>AWS FedRAMP SSP</td></tr>
+      <tr><td>PE-3 Physical Access Control</td><td>Biometrics, mantraps, 24/7 security, CCTV</td><td>AWS SOC 2 report</td></tr>
+      <tr><td>PE-6 Monitoring Access</td><td>90-day retention of access logs and CCTV</td><td>AWS compliance reports</td></tr>
+      <tr><td>PE-10 Emergency Shutoff</td><td>UPS, generators, automated shutoff</td><td>AWS infrastructure design</td></tr>
+      <tr><td>PE-11 Emergency Power</td><td>N+1 redundant power with diesel backup</td><td>AWS specifications</td></tr>
+      <tr><td>PE-13 Fire Protection</td><td>Sprinklers, VESDA detection</td><td>AWS SOC 2 report</td></tr>
+      <tr><td>PE-14 Environmental Controls</td><td>HVAC, temperature/humidity monitoring</td><td>AWS infrastructure design</td></tr>
+    </table>
+
+    <h3>Customer Responsibility</h3>
+    <ul>
+      <li><strong>Logical access</strong> to EC2 and AWS resources (IAM, security groups, WAF)</li>
+      <li><strong>Data protection</strong> at the application layer (GitLab settings, encryption, backups)</li>
+      <li><strong>Secure configuration</strong> of deployed resources (Terraform IaC with Checkov)</li>
+    </ul>
+
+    <!-- Section 10: Contingency Planning -->
+    <h2 id="contingency">10. Contingency Planning</h2>
+
+    <h3>Backup Strategy (CP-9)</h3>
+    <table>
+      <tr><th>Backup Type</th><th>Frequency</th><th>Destination</th><th>Encryption</th><th>Retention</th></tr>
+      <tr><td>GitLab data backup</td><td>Daily (02:00 UTC)</td><td>S3 backup bucket</td><td>CMK</td><td>365 days (30d Glacier)</td></tr>
+      <tr><td>GitLab config backup</td><td>Daily (02:15 UTC)</td><td>S3 <code>config-backups/</code></td><td>CMK</td><td>365 days (30d Glacier)</td></tr>
+      <tr><td><code>gitlab-secrets.json</code></td><td>On deployment</td><td>Secrets Manager</td><td>CMK</td><td>Indefinite</td></tr>
+      <tr><td>EBS snapshots</td><td>Per backup schedule</td><td>EBS snapshots</td><td>EBS CMK</td><td><em>[Per policy]</em></td></tr>
+      <tr><td>S3 versioning</td><td>Continuous</td><td>Same bucket</td><td>CMK</td><td>Per lifecycle policy</td></tr>
+      <tr><td>Cross-region replication</td><td>Continuous (if enabled)</td><td>Secondary US region</td><td>CMK</td><td>Mirrors primary</td></tr>
+    </table>
+
+    <h3>Recovery Procedures (CP-10)</h3>
+    <p><strong>RTO:</strong> <em>[To be defined]</em> &nbsp;|&nbsp; <strong>RPO:</strong> 24 hours (daily backup cycle)</p>
+
+    <h4>Full System Recovery</h4>
+    <ol>
+      <li><strong>Infrastructure Rebuild:</strong> <code>terraform apply</code> to recreate all resources. State in versioned, encrypted S3 backend.</li>
+      <li><strong>Data Restoration:</strong> Restore latest GitLab backup from S3 via <code>gitlab-backup restore</code>.</li>
+      <li><strong>Config Restoration:</strong> Download config backup from S3, extract to <code>/etc/gitlab/</code>.</li>
+      <li><strong>Secrets Restoration:</strong> Retrieve <code>gitlab-secrets.json</code> and root password from Secrets Manager.</li>
+      <li><strong>Reconfigure:</strong> <code>gitlab-ctl reconfigure</code> to apply restored configuration.</li>
+      <li><strong>DNS Update:</strong> Update Cloudflare DNS to point to new ALB endpoint.</li>
+      <li><strong>Verification:</strong> Confirm health check (<code>/-/health</code>), user access, and backup schedules.</li>
+    </ol>
+
+    <div class="info">
+      <strong>Separate Data Volume:</strong> GitLab data (<code>/var/opt/gitlab</code>) is on a dedicated EBS volume, enabling independent snapshots, reattachment to replacement instances, and root volume replacement without data loss.
+    </div>
+
+    <!-- Section 11: Configuration Management -->
+    <h2 id="config-mgmt">11. Configuration Management</h2>
+
+    <h3>Infrastructure as Code (CM-2, CM-3)</h3>
+    <table>
+      <tr><th>Tool</th><th>Purpose</th><th>Implementation</th></tr>
+      <tr><td><strong>Terraform</strong> (&gt;= 1.5)</td><td>Infrastructure provisioning</td><td>All resources in <code>terraform/</code> with modular structure</td></tr>
+      <tr><td><strong>Checkov</strong></td><td>Policy-as-code scanning</td><td>Pre-deploy; all checks pass (skips documented inline)</td></tr>
+      <tr><td><strong>AWS Config</strong></td><td>Drift detection</td><td>Continuous configuration recording</td></tr>
+      <tr><td><strong>Git</strong></td><td>Change audit trail</td><td>All changes committed with author and timestamp</td></tr>
+    </table>
+
+    <h3>Change Control Process</h3>
+    <ol>
+      <li><strong>Propose:</strong> Developer creates branch with Terraform changes</li>
+      <li><strong>Scan:</strong> Checkov enforces security policies</li>
+      <li><strong>Review:</strong> Merge request code review</li>
+      <li><strong>Plan:</strong> <code>terraform plan</code> previews changes</li>
+      <li><strong>Approve:</strong> Authorized personnel approve plan output</li>
+      <li><strong>Apply:</strong> <code>terraform apply</code> executes changes</li>
+      <li><strong>Verify:</strong> AWS Config confirms expected state</li>
+      <li><strong>Audit:</strong> Git history + CloudTrail provide audit trail</li>
+    </ol>
+
+    <h3>Configuration Settings (CM-6)</h3>
+    <table>
+      <tr><th>Setting</th><th>Value</th><th>Enforcement</th></tr>
+      <tr><td>TLS minimum</td><td>TLS 1.3</td><td><code>ELBSecurityPolicy-TLS13-1-2-2021-06</code></td></tr>
+      <tr><td>Instance metadata</td><td>IMDSv2 required</td><td><code>http_tokens = "required"</code></td></tr>
+      <tr><td>KMS rotation</td><td>Automatic annual</td><td><code>enable_key_rotation = true</code></td></tr>
+      <tr><td>ALB headers</td><td>Drop invalid</td><td><code>drop_invalid_header_fields = true</code></td></tr>
+      <tr><td>GitLab signup</td><td>Disabled</td><td><code>gitlab_signup_enabled = false</code></td></tr>
+      <tr><td>MFA</td><td>Required, zero grace</td><td><code>require_two_factor_authentication = true</code></td></tr>
+      <tr><td>Password length</td><td>15 characters</td><td><code>password_minimum_length = 15</code></td></tr>
+      <tr><td>Session timeout</td><td>60 minutes</td><td><code>session_expire_delay = 60</code></td></tr>
+      <tr><td>Default visibility</td><td>Private</td><td><code>default_*_visibility = 'private'</code></td></tr>
+    </table>
+
+    <!-- Section 12: Maintenance -->
+    <h2 id="maintenance">12. Maintenance</h2>
+
+    <h3>Patching Strategy</h3>
+    <table>
+      <tr><th>Component</th><th>Update Method</th><th>Frequency</th><th>Responsibility</th></tr>
+      <tr><td>Amazon Linux 2023</td><td><code>dnf update --security</code></td><td>Weekly</td><td>System Administrator</td></tr>
+      <tr><td>GitLab CE</td><td><code>dnf update gitlab-ce</code> or Terraform rebuild</td><td>Monthly / per advisory</td><td>System Administrator</td></tr>
+      <tr><td>Terraform providers</td><td><code>terraform init -upgrade</code></td><td>Monthly</td><td>System Administrator</td></tr>
+      <tr><td>AWS managed services</td><td>Automatic (AWS)</td><td>Continuous</td><td>AWS</td></tr>
+    </table>
+
+    <h3>ClamAV Antimalware Updates (SI-3)</h3>
+    <table>
+      <tr><th>Activity</th><th>Schedule</th><th>Configuration</th></tr>
+      <tr><td>Signature update (<code>freshclam</code>)</td><td>Daily 01:00 UTC</td><td><code>/etc/cron.d/clamav-update</code></td></tr>
+      <tr><td>Full scan (git-data, uploads)</td><td>Daily 03:00 UTC</td><td><code>/etc/cron.d/clamav-scan</code></td></tr>
+      <tr><td>Scan logs to CloudWatch</td><td>Continuous</td><td>CloudWatch Agent config</td></tr>
+      <tr><td><code>clamd</code> daemon</td><td>Continuous</td><td><code>clamd@scan</code> systemd service</td></tr>
+    </table>
+
+    <h3>Secret Rotation Schedule (IA-5(1))</h3>
+    <table>
+      <tr><th>Secret</th><th>Method</th><th>Frequency</th><th>Implementation</th></tr>
+      <tr><td>GitLab root password</td><td>Automated Lambda via Secrets Manager</td><td>Every 90 days</td><td><code>modules/rotation/</code></td></tr>
+      <tr><td>GitLab admin PAT</td><td>Manual via GitLab admin UI</td><td>Per org policy</td><td>Stored in Secrets Manager</td></tr>
+      <tr><td>KMS CMKs</td><td>Automatic AWS KMS rotation</td><td>Annual</td><td><code>enable_key_rotation = true</code></td></tr>
+      <tr><td>ACM TLS certificate</td><td>Automatic ACM renewal</td><td>Before expiration</td><td>ACM managed</td></tr>
+    </table>
+
+    <h3>Maintenance Windows</h3>
+    <ul>
+      <li>Scheduled window: <em>[To be defined, e.g., Sundays 02:00&ndash;06:00 UTC]</em></li>
+      <li>Emergency patches for critical vulnerabilities may be applied outside windows with ISSO approval.</li>
+    </ul>
+
+    <!-- Section 13: System Integrity -->
+    <h2 id="integrity">13. System Integrity</h2>
+
+    <h3>Vulnerability Scanning (RA-5, SI-2)</h3>
+    <table>
+      <tr><th>Tool</th><th>Scope</th><th>Schedule</th><th>Output</th></tr>
+      <tr><td><strong>Amazon Inspector</strong></td><td>EC2 CVE scanning (OS + packages)</td><td>Continuous</td><td>Security Hub findings</td></tr>
+      <tr><td><strong>Security Hub</strong></td><td>NIST 800-53 v5 + AWS best practices</td><td>Continuous</td><td>Dashboard with severity</td></tr>
+      <tr><td><strong>Checkov</strong></td><td>Terraform IaC analysis</td><td>Pre-deploy</td><td>Pass/fail per change</td></tr>
+      <tr><td><strong>GuardDuty</strong></td><td>Threat detection (API, crypto, creds)</td><td>Continuous</td><td>Security Hub findings</td></tr>
+    </table>
+
+    <h3>Antimalware Protection (SI-3)</h3>
+    <table>
+      <tr><th>Layer</th><th>Tool</th><th>Capability</th></tr>
+      <tr><td>Host-based</td><td>ClamAV (on EC2)</td><td>Daily scans of <code>git-data/</code> and <code>uploads/</code>; daily signature updates; <code>clamd</code> daemon; logs to CloudWatch</td></tr>
+      <tr><td>Cloud-based</td><td>GuardDuty Malware Protection</td><td>Automated EBS scanning on suspicious activity; trojans, rootkits, exploits</td></tr>
+    </table>
+
+    <h3>CISA KEV Monitoring (SI-5)</h3>
+    <ul>
+      <li><strong>Frequency:</strong> Daily at 06:00 UTC (EventBridge)</li>
+      <li><strong>Source:</strong> CISA KEV JSON feed</li>
+      <li><strong>State Tracking:</strong> DynamoDB table (CMK-encrypted)</li>
+      <li><strong>Notification:</strong> New KEV entries published to SNS for admin review</li>
+    </ul>
+
+    <h3>Continuous Monitoring Pipeline</h3>
+    <div class="pipeline">[Amazon Inspector] --findings--&gt; [Security Hub] --aggregation--&gt; [Dashboard]
+[GuardDuty]        --findings--&gt; [Security Hub]
+[AWS Config]       --findings--&gt; [Security Hub]
+[Checkov]          --pre-deploy--&gt; [Git CI/CD]
+
+[CloudTrail]       --API logs--&gt;  [CloudWatch Logs] --alarms--&gt; [SNS] --&gt; [Admin]
+[VPC Flow Logs]    --traffic--&gt;   [CloudWatch Logs]
+[WAF Logs]         --requests--&gt;  [CloudWatch Logs]
+[ClamAV Logs]      --scans--&gt;     [CloudWatch Logs]
+
+[CISA KEV Lambda]  --new vulns--&gt; [SNS] --&gt; [Admin]
+[User Deact Lambda] --deactivations--&gt; [SNS] --&gt; [Admin]</div>
+
+    <!-- Section 14: Plan Approval and Authorization -->
+    <h2 id="approval">14. Plan Approval and Authorization</h2>
+
+    <h3>Document Approval</h3>
+
+    <div class="sig-block">
+      <h4>System Owner</h4>
+      <div class="sig-field"><label>Name:</label><span class="sig-line"></span></div>
+      <div class="sig-field"><label>Title:</label><span class="sig-line"></span></div>
+      <div class="sig-field"><label>Organization:</label><span class="sig-line"></span></div>
+      <div class="sig-field"><label>Signature:</label><span class="sig-line"></span></div>
+      <div class="sig-field"><label>Date:</label><span class="sig-line"></span></div>
+    </div>
+
+    <div class="sig-block">
+      <h4>Information System Security Officer (ISSO)</h4>
+      <div class="sig-field"><label>Name:</label><span class="sig-line"></span></div>
+      <div class="sig-field"><label>Title:</label><span class="sig-line"></span></div>
+      <div class="sig-field"><label>Organization:</label><span class="sig-line"></span></div>
+      <div class="sig-field"><label>Signature:</label><span class="sig-line"></span></div>
+      <div class="sig-field"><label>Date:</label><span class="sig-line"></span></div>
+    </div>
+
+    <div class="sig-block">
+      <h4>Authorizing Official (AO)</h4>
+      <div class="sig-field"><label>Name:</label><span class="sig-line"></span></div>
+      <div class="sig-field"><label>Title:</label><span class="sig-line"></span></div>
+      <div class="sig-field"><label>Organization:</label><span class="sig-line"></span></div>
+      <div class="sig-field"><label>Signature:</label><span class="sig-line"></span></div>
+      <div class="sig-field"><label>Date:</label><span class="sig-line"></span></div>
+    </div>
+
+    <h3>Authorization to Operate (ATO)</h3>
+    <table>
+      <tr><th>Field</th><th>Value</th></tr>
+      <tr><td>ATO Type</td><td><em>[Full ATO / Interim ATO / ATO with Conditions]</em></td></tr>
+      <tr><td>ATO Date</td><td><em>[Date issued]</em></td></tr>
+      <tr><td>ATO Expiration</td><td><em>[Date &mdash; typically 3 years]</em></td></tr>
+      <tr><td>Conditions</td><td><em>[Any conditions imposed by the AO]</em></td></tr>
+      <tr><td>Risk Acceptance</td><td>AO accepts residual risks documented in the <a href="#controls">Remaining Gaps</a> section and <a href="dod-il2-compliance.html">DoD IL2 Compliance Mapping</a>.</td></tr>
+    </table>
+
+    <h3>ATO Process (DoDI 8510.01)</h3>
+    <ol>
+      <li><strong>Categorize</strong> &mdash; Moderate per FIPS 199 / CNSSI 1253</li>
+      <li><strong>Select</strong> &mdash; NIST 800-53 Rev 5 Moderate baseline</li>
+      <li><strong>Implement</strong> &mdash; Controls via Terraform IaC (this SSP + compliance mapping)</li>
+      <li><strong>Assess</strong> &mdash; Independent security assessment by qualified assessor (SCA)</li>
+      <li><strong>Authorize</strong> &mdash; AO reviews, accepts residual risk, issues ATO</li>
+      <li><strong>Monitor</strong> &mdash; GuardDuty, Security Hub, Config, Inspector, CISA KEV Lambda</li>
+    </ol>
+
+    <h3>Document Revision History</h3>
+    <table>
+      <tr><th>Version</th><th>Date</th><th>Author</th><th>Description</th></tr>
+      <tr><td>1.0</td><td>2026-03-03</td><td><em>[Author]</em></td><td>Initial SSP per NIST 800-18 Rev 1</td></tr>
+    </table>
+
+    <footer>
+      <p>This System Security Plan is a living document and must be reviewed and updated at least annually or when significant changes occur to the system architecture, security posture, or authorization boundary. Changes must be reflected in both this SSP and the companion <a href="dod-il2-compliance.html">DoD IL2 Compliance Mapping</a>.</p>
+    </footer>
+
+  </main>
+</div>
+
+<script>
+  // Sidebar toggle for mobile
+  function toggleSidebar() {
+    document.getElementById('sidebar').classList.toggle('open');
+  }
+
+  // Close sidebar when clicking a link on mobile
+  document.querySelectorAll('.sidebar nav a').forEach(link => {
+    link.addEventListener('click', () => {
+      if (window.innerWidth <= 960) {
+        document.getElementById('sidebar').classList.remove('open');
+      }
+    });
+  });
+
+  // Highlight active sidebar link on scroll
+  const sections = document.querySelectorAll('h2[id]');
+  const navLinks = document.querySelectorAll('.sidebar nav a');
+
+  function updateActiveLink() {
+    let current = '';
+    sections.forEach(section => {
+      const sectionTop = section.getBoundingClientRect().top;
+      if (sectionTop <= 80) {
+        current = section.getAttribute('id');
+      }
+    });
+    navLinks.forEach(link => {
+      link.classList.remove('active');
+      if (link.getAttribute('href') === '#' + current) {
+        link.classList.add('active');
+      }
+    });
+  }
+
+  window.addEventListener('scroll', updateActiveLink);
+  updateActiveLink();
+</script>
+
+</body>
+</html>

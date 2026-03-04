@@ -13,5 +13,8 @@ terraform/**/.terraform/
 # Docs
 docs/plans/
 
+# Claude
+CLAUDE.md
+
 # OS
 .DS_Store

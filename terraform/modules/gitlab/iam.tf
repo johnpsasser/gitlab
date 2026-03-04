@@ -77,6 +77,25 @@ resource "aws_iam_role_policy" "s3_backup" {
   })
 }
 
+# SSM Parameter access for rotation Lambda password handoff (IA-5(1))
+resource "aws_iam_role_policy" "ssm_rotation_param" {
+  name = "${var.project_name}-ssm-rotation-param"
+  role = aws_iam_role.gitlab.id
+
+  policy = jsonencode({
+    Version = "2012-10-17"
+    Statement = [
+      {
+        Effect = "Allow"
+        Action = [
+          "ssm:GetParameter"
+        ]
+        Resource = "arn:aws:ssm:${data.aws_region.current.name}:${data.aws_caller_identity.current.account_id}:parameter/${var.project_name}/rotation/*"
+      }
+    ]
+  })
+}
+
 # CloudWatch Logs
 resource "aws_iam_role_policy" "cloudwatch" {
   name = "${var.project_name}-cloudwatch"

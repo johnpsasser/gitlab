@@ -78,6 +78,20 @@ resource "aws_vpc_endpoint" "logs" {
   }
 }
 
+# KMS Interface Endpoint (for Lambda secrets rotation)
+resource "aws_vpc_endpoint" "kms" {
+  vpc_id              = aws_vpc.main.id
+  service_name        = "com.amazonaws.${var.aws_region}.kms"
+  vpc_endpoint_type   = "Interface"
+  subnet_ids          = [aws_subnet.private[0].id]
+  security_group_ids  = [aws_security_group.vpc_endpoints.id]
+  private_dns_enabled = true
+
+  tags = {
+    Name = "${var.project_name}-kms-endpoint"
+  }
+}
+
 # Security group for VPC endpoints
 resource "aws_security_group" "vpc_endpoints" {
   name_prefix = "${var.project_name}-vpc-endpoints-"

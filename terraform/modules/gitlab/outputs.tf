@@ -17,3 +17,8 @@ output "backup_bucket_name" {
 output "backup_bucket_arn" {
   value = aws_s3_bucket.backups.arn
 }
+
+output "root_password_secret_arn" {
+  description = "ARN of the root password Secrets Manager secret"
+  value       = aws_secretsmanager_secret.root_password.arn
+}

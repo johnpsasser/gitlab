@@ -35,11 +35,11 @@ This GitLab instance runs on a single EC2 instance in a private subnet with no p
 | Control Area | Status | Implementation |
 |---|---|---|
 | AC-2 Account Management | Implemented | GitLab native authentication with admin-only account creation (`gitlab_signup_enabled = false`). GitLab RBAC manages project/group access. Root password stored in Secrets Manager with CMK encryption (`modules/gitlab/secrets.tf`). |
-| AC-2(3) Inactive Accounts | Gap | No automated inactive account deprovisioning configured. See residual gaps. |
+| AC-2(3) Inactive Accounts | Implemented | Lambda function (`modules/lambda-user-deactivation/`) runs weekly via EventBridge to deactivate GitLab users inactive for >90 days. Uses GitLab Admin API with PAT stored in Secrets Manager. Skips admin and bot accounts. SNS notifications on deactivations. Supports `DRY_RUN` mode for safe rollout. |
 | AC-3 Access Enforcement | Implemented | Security groups restrict ALB ingress to port 443 only, with AWS WAF filtering all requests (`modules/networking/security_groups.tf`). EC2 instance accepts HTTP only from ALB SG. No SSH (port 22) ingress on EC2. IAM policies scoped to least privilege (`modules/gitlab/iam.tf`). |
 | AC-4 Information Flow | Implemented | Public ALB with AWS WAF and TLS 1.3 termination (`modules/alb/alb.tf`). WAF applies OWASP common rules, known bad input filtering, and rate limiting (`modules/waf/waf.tf`). EC2 in private subnet routed through NAT Gateway (`modules/networking/vpc.tf`). VPC endpoints keep AWS API traffic off the internet (`modules/networking/endpoints.tf`). |
 | AC-7 Unsuccessful Logon | Implemented | GitLab CE enforces account lockout after failed attempts. AWS WAF rate limiting (2000 requests per 5 minutes per IP) mitigates brute-force attacks at the network edge (`modules/waf/waf.tf`). |
-| AC-8 Login Banner | Gap | No DoD-required consent banner configured on the GitLab sign-in page. See residual gaps. |
+| AC-8 Login Banner | Implemented | Standard DoD consent banner configured via `gitlab_rails['extra_sign_in_text']` in `user_data.sh` gitlab.rb. Banner displays the USG-authorized use notice and monitoring consent text on the GitLab sign-in page. |
 | AC-17 Remote Access | Implemented | All access via public HTTPS with GitLab native authentication + mandatory 2FA. TLS 1.3 enforced at the ALB (`ELBSecurityPolicy-TLS13-1-2-2021-06`). AWS WAF protects against common web exploits. Admin access via SSM Session Manager only -- no SSH keys (`modules/gitlab/iam.tf`). Git operations use HTTPS with PATs; no SSH access is exposed. |
 
 ### AU -- Audit and Accountability
@@ -83,16 +83,16 @@ This GitLab instance runs on a single EC2 instance in a private subnet with no p
 | IA-2 User Identification | Implemented | GitLab native authentication with admin-managed accounts. Signup disabled (`gitlab_signup_enabled = false`). All user accounts created by GitLab administrators only. |
 | IA-2(1) MFA | Implemented | Two-factor authentication required for all users (`require_two_factor_authentication = true`). Zero grace period -- users must configure TOTP immediately on next login (`two_factor_authentication_grace_period = 0`). Configured in `user_data.sh` gitlab.rb. |
 | IA-5 Authenticator Management | Implemented | 15-character minimum password length (`password_minimum_length = 15`). Root password managed in Secrets Manager with CMK encryption (`modules/gitlab/secrets.tf`). Git operations authenticated via HTTPS Personal Access Tokens (PATs). No static SSH keys for admin access (SSM used instead). |
-| IA-5(1) Authenticator Rotation | Partially Implemented | Secrets Manager secrets have CMK encryption. **Gap**: Automated Lambda-based rotation not yet implemented (tracked as TODO in `secrets.tf`). |
+| IA-5(1) Authenticator Rotation | Implemented | Secrets Manager root password secret rotated automatically every 90 days via Lambda (`modules/rotation/`). Rotation uses the standard 4-step Secrets Manager pattern (createSecret, setSecret, testSecret, finishSecret). Password applied to GitLab via SSM Run Command with `gitlab-rails runner`. Password handoff uses temporary SSM SecureString parameters (never in shell args). AWSPREVIOUS label preserves rollback capability. |
 | IA-8 Non-Org User ID | Implemented | Signup disabled. Only administrators can create accounts. Default visibility set to private for all projects, groups, and snippets. |
 
 ### IR -- Incident Response
 
 | Control Area | Status | Implementation |
 |---|---|---|
-| IR-4 Incident Handling | Partially Implemented | CloudWatch alarms on CPU (>90%), status check failures, and unauthorized API calls with SNS notification (`modules/monitoring/cloudwatch.tf`). CloudTrail provides forensic investigation capability. GuardDuty provides automated threat detection. Security Hub aggregates findings. WAF metrics and logs provide visibility into blocked threats. **Gap**: No formal incident response plan documented. |
+| IR-4 Incident Handling | Implemented | CloudWatch alarms on CPU (>90%), status check failures, and unauthorized API calls with SNS notification (`modules/monitoring/cloudwatch.tf`). CloudTrail provides forensic investigation capability. GuardDuty provides automated threat detection. Security Hub aggregates findings. WAF metrics and logs provide visibility into blocked threats. Formal Incident Response Plan documented (`docs/incident-response-plan.md`) per NIST 800-61r2 with roles, severity classification, containment strategies, and response runbooks. |
 | IR-5 Incident Monitoring | Implemented | GuardDuty threat detection (`modules/security/guardduty.tf`). Security Hub finding aggregation (`modules/security/securityhub.tf`). CloudWatch alarms with SNS alerting. WAF logging to CloudWatch. CloudTrail integrated with CloudWatch Logs for real-time analysis. |
-| IR-6 Incident Reporting | Gap | No formal incident reporting procedures or contact lists documented. |
+| IR-6 Incident Reporting | Implemented | Incident reporting procedures documented in the Incident Response Plan (`docs/incident-response-plan.md`), including contact list, notification timelines, DoD reporting requirements, and report formats. |
 
 ### MP -- Media Protection
 
@@ -104,7 +104,7 @@ This GitLab instance runs on a single EC2 instance in a private subnet with no p
 
 | Control Area | Status | Implementation |
 |---|---|---|
-| RA-5 Vulnerability Scanning | Partially Implemented | Security Hub checks against NIST 800-53 and AWS best practices. GuardDuty monitors for known threats. Checkov scans IaC for misconfigurations. **Gap**: No Amazon Inspector for runtime CVE scanning on EC2. |
+| RA-5 Vulnerability Scanning | Implemented | Amazon Inspector v2 enabled for continuous EC2 CVE scanning (`modules/security/inspector.tf`). Findings automatically flow to Security Hub. Security Hub checks against NIST 800-53 and AWS best practices. GuardDuty monitors for known threats. Checkov scans IaC for misconfigurations. |
 
 ### SC -- System and Communications Protection
 
@@ -121,10 +121,10 @@ This GitLab instance runs on a single EC2 instance in a private subnet with no p
 
 | Control Area | Status | Implementation |
 |---|---|---|
-| SI-2 Flaw Remediation | Partially Implemented | Amazon Linux 2023 provides security updates via `dnf`. **Gap**: No Amazon Inspector for automated CVE scanning. |
-| SI-3 Malicious Code Protection | Partially Implemented | Amazon Linux 2023 includes kernel-level protections. **Gap**: No dedicated antimalware scanning. |
+| SI-2 Flaw Remediation | Implemented | Amazon Linux 2023 provides security updates via `dnf`. Amazon Inspector v2 provides continuous automated CVE scanning on the EC2 instance (`modules/security/inspector.tf`). Inspector findings integrate with Security Hub for centralized vulnerability tracking. |
+| SI-3 Malicious Code Protection | Implemented | ClamAV antimalware installed on EC2 via `user_data.sh` with daily signature updates (`freshclam`) and daily scans of GitLab data directories (`/var/opt/gitlab/git-data/`, `/var/opt/gitlab/uploads/`). Scan logs shipped to CloudWatch Logs for alerting. GuardDuty Malware Protection enabled for automated EBS malware scanning on threat detection (`modules/security/guardduty.tf`). |
 | SI-4 System Monitoring | Implemented | CloudWatch detailed monitoring enabled on EC2. CPU, status check, and unauthorized API call alarms with SNS notification (`modules/monitoring/cloudwatch.tf`). CloudTrail monitors API activity with CloudWatch Logs integration. VPC Flow Logs monitor network traffic at 60-second intervals. WAF logs capture all evaluated requests. GuardDuty provides automated threat detection. Security Hub provides centralized findings dashboard. AWS Config monitors configuration compliance. |
-| SI-5 Security Alerts | Partially Implemented | CloudWatch alarms deliver via SNS topic. Security Hub aggregates findings. **Gap**: No subscription to US-CERT/CISA advisories. |
+| SI-5 Security Alerts | Implemented | CloudWatch alarms deliver via SNS topic. Security Hub aggregates findings. Daily Lambda (`modules/lambda-cisa-alerts/`) polls the CISA Known Exploited Vulnerabilities (KEV) catalog and sends SNS notifications for new entries. Amazon Inspector also integrates CISA KEV data into its vulnerability findings. |
 
 ---
 
@@ -143,26 +143,35 @@ This GitLab instance runs on a single EC2 instance in a private subnet with no p
 
 ## 4. Residual Gaps and Remediation Plan
 
+### Resolved Gaps
+
+The following gaps have been remediated:
+
+| Gap | NIST Control | Resolution |
+|---|---|---|
+| No formal Incident Response Plan | IR-1, IR-6, IR-8 | IRP documented per NIST 800-61r2 (`docs/incident-response-plan.md`). |
+| No vulnerability scanning | SI-2, RA-5 | Amazon Inspector v2 enabled (`modules/security/inspector.tf`). |
+| No formal System Security Plan (SSP) | PL-2 | SSP documented per NIST 800-18 (`docs/system-security-plan.md`). |
+| No login banner | AC-8 | DoD consent banner configured in `user_data.sh` gitlab.rb. |
+| No inactive account deprovisioning | AC-2(3) | Weekly Lambda deactivates users inactive >90 days (`modules/lambda-user-deactivation/`). |
+| Secrets rotation not automated | IA-5(1) | Lambda-based 90-day rotation for root password (`modules/rotation/`). |
+| No dedicated antimalware | SI-3 | ClamAV on EC2 + GuardDuty Malware Protection enabled. |
+| No automated advisory ingestion | SI-5 | Daily CISA KEV monitoring Lambda (`modules/lambda-cisa-alerts/`). |
+
+### Remaining Gaps
+
 | # | Gap | NIST Control | Priority | Remediation |
 |---|---|---|---|---|
-| 1 | No formal Incident Response Plan | IR-1, IR-6, IR-8 | High | Draft an IRP covering roles, escalation, communication, and forensic procedures. Conduct tabletop exercise. |
-| 2 | No centralized log analysis / SIEM | AU-6, SI-4 | High | Deploy Amazon OpenSearch or integrate with a SIEM (e.g., Splunk, Elastic). Create CloudWatch Logs Insights queries for security events. |
-| 3 | No vulnerability scanning | SI-2, RA-5 | High | Enable Amazon Inspector on the GitLab EC2 instance for continuous CVE scanning. Add Terraform resource for `aws_inspector2_enabler`. |
-| 4 | No formal System Security Plan (SSP) | PL-2 | High | Document the SSP per NIST 800-18 format. This compliance mapping serves as a starting point but does not replace a formal SSP. |
-| 5 | No login banner | AC-8 | Medium | Configure GitLab sign-in page banner in `gitlab.rb` with DoD-required consent text. |
-| 6 | No security awareness training program | AT-2 | Medium | Establish annual security awareness training for all users. Document completion records. |
-| 7 | No inactive account deprovisioning | AC-2(3) | Medium | Configure GitLab to deactivate accounts after 90 days of inactivity. Automate with a scheduled rake task or API script. |
-| 8 | Secrets rotation not automated | IA-5(1) | Medium | Implement Lambda-based rotation for Secrets Manager secrets. Tracked as TODO in `modules/gitlab/secrets.tf`. |
-| 9 | ALB-to-EC2 traffic unencrypted | SC-8 | Medium | Configure GitLab nginx for HTTPS internally; update ALB target group to HTTPS. Traffic is within a private subnet but end-to-end TLS is preferred. |
-| 10 | Backup bucket access logging | AU-2 | Low | Pass S3 access-logs bucket ID through to the GitLab module. Tracked as TODO in `modules/gitlab/backup.tf`. |
-| 11 | No automated advisory ingestion | SI-5 | Low | Subscribe to CISA alerts and AWS Security Bulletins. Route to an ops channel. |
+| 1 | No centralized log analysis / SIEM | AU-6, SI-4 | High | Deploy Amazon OpenSearch or integrate with a SIEM (e.g., Splunk, Elastic). Create CloudWatch Logs Insights queries for security events. |
+| 2 | No security awareness training program | AT-2 | Medium | Establish annual security awareness training for all users. Document completion records. |
+| 3 | ALB-to-EC2 traffic unencrypted | SC-8 | Medium | Configure GitLab nginx for HTTPS internally; update ALB target group to HTTPS. Traffic is within a private subnet but end-to-end TLS is preferred. |
+| 4 | Backup bucket access logging | AU-2 | Low | Pass S3 access-logs bucket ID through to the GitLab module. Tracked as TODO in `modules/gitlab/backup.tf`. |
 
 ### Prioritized Next Steps
 
-1. **Immediate** -- Enable Amazon Inspector; add login banner to `gitlab.rb`.
-2. **30 days** -- Draft Incident Response Plan; configure inactive account deprovisioning; implement secrets rotation.
-3. **60 days** -- Deploy centralized log analysis; begin formal SSP documentation; enable end-to-end TLS.
-4. **90 days** -- Establish security awareness training program; complete SSP.
+1. **30 days** -- Deploy centralized log analysis (OpenSearch or SIEM integration); enable end-to-end TLS (ALB-to-EC2 HTTPS).
+2. **60 days** -- Establish security awareness training program; configure backup bucket access logging.
+3. **Ongoing** -- Conduct IRP tabletop exercises; review and update SSP quarterly; rotate GitLab admin PAT.
 
 ---
 
@@ -186,7 +195,11 @@ This GitLab instance runs on a single EC2 instance in a private subnet with no p
 | Backups | `modules/gitlab/backup.tf` | CP-9 (CMK-encrypted backups, config backups to S3, Glacier lifecycle) |
 | CloudTrail | `modules/monitoring/cloudtrail.tf` | AU-2, AU-3, AU-9 (multi-region, CMK-encrypted, CloudWatch Logs integration) |
 | CloudWatch | `modules/monitoring/cloudwatch.tf` | SI-4, IR-4 (health + security alarms, SNS alerting) |
-| GuardDuty | `modules/security/guardduty.tf` | CA-7, IR-5, SI-4 (threat detection) |
+| GuardDuty | `modules/security/guardduty.tf` | CA-7, IR-5, SI-3, SI-4 (threat detection, malware protection) |
 | Security Hub | `modules/security/securityhub.tf` | CA-7, RA-5 (NIST 800-53 v5 + AWS best practices standards) |
 | AWS Config | `modules/security/config.tf` | CA-7, CM-2, CM-3 (configuration compliance recording) |
+| Inspector | `modules/security/inspector.tf` | RA-5, SI-2 (EC2 CVE scanning, CISA KEV integration) |
+| User Deactivation | `modules/lambda-user-deactivation/` | AC-2(3) (automated inactive account deactivation) |
+| Secrets Rotation | `modules/rotation/` | IA-5(1) (automated root password rotation via Secrets Manager) |
+| CISA Alerts | `modules/lambda-cisa-alerts/` | SI-5 (CISA KEV advisory monitoring and SNS notification) |
 | Bootstrap | `bootstrap/state_backend.tf` | CM-3 (versioned, encrypted Terraform state with lifecycle) |

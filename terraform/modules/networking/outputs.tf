@@ -29,3 +29,8 @@ output "gitlab_security_group_id" {
 output "s3_access_logs_bucket_id" {
   value = aws_s3_bucket.access_logs.id
 }
+
+output "vpc_endpoints_security_group_id" {
+  description = "Security group ID for VPC interface endpoints"
+  value       = aws_security_group.vpc_endpoints.id
+}

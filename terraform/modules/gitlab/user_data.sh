@@ -93,6 +93,17 @@ gitlab_rails['backup_upload_connection'] = {
 gitlab_rails['backup_upload_remote_directory'] = '${backup_bucket}'
 gitlab_rails['backup_keep_time'] = 604800
 
+# DoD consent banner (AC-8)
+gitlab_rails['extra_sign_in_text'] = <<~BANNER
+  **NOTICE**: You are accessing a U.S. Government (USG) Information System (IS) that is provided for USG-authorized use only. By using this IS (which includes any device attached to this IS), you consent to the following conditions:
+
+  - The USG routinely intercepts and monitors communications on this IS for purposes including, but not limited to, penetration testing, COMSEC monitoring, network operations and defense, personnel misconduct (PM), law enforcement (LE), and counterintelligence (CI) investigations.
+  - At any time, the USG may inspect and seize data stored on this IS.
+  - Communications using, or data stored on, this IS are not private, are subject to routine monitoring, interception, and search, and may be disclosed or used for any USG-authorized purpose.
+  - This IS includes security measures (e.g., authentication and access controls) to protect USG interests -- not for your personal benefit or privacy.
+  - Notwithstanding the above, using this IS does not constitute consent to PM, LE, or CI investigative searching or monitoring of the content of privileged communications, or work product, related to personal representation or services by attorneys, psychotherapists, or clergy, and their assistants. Such communications and work product are private and confidential. See User Agreement for details.
+BANNER
+
 # Monitoring
 gitlab_rails['monitoring_whitelist'] = ['127.0.0.0/8']
 GITLABCFG
@@ -131,5 +142,81 @@ cat > /opt/aws/amazon-cloudwatch-agent/etc/config.json << 'CWAGENT'
 }
 CWAGENT
 systemctl enable --now amazon-cloudwatch-agent
+
+# === ClamAV Antimalware (SI-3) ===
+echo "=== Installing ClamAV ==="
+dnf install -y clamav clamav-update clamd
+
+# Configure freshclam for daily signature updates
+cat > /etc/freshclam.conf << 'FRESHCLAM'
+DatabaseDirectory /var/lib/clamav
+UpdateLogFile /var/log/clamav/freshclam.log
+LogTime yes
+DatabaseMirror database.clamav.net
+MaxAttempts 3
+ScriptedUpdates yes
+NotifyClamd /etc/clamd.d/scan.conf
+FRESHCLAM
+
+# Configure clamd
+cat > /etc/clamd.d/scan.conf << 'CLAMD'
+LocalSocket /run/clamd.scan/clamd.sock
+LogFile /var/log/clamav/clamd.log
+LogTime yes
+DatabaseDirectory /var/lib/clamav
+CLAMD
+
+# Create log directory
+mkdir -p /var/log/clamav
+chown clamscan:clamscan /var/log/clamav
+
+# Run initial signature update
+freshclam
+
+# Enable and start clamd
+systemctl enable --now clamd@scan
+
+# Daily scan cron job targeting GitLab data directories
+cat > /etc/cron.d/clamav-scan << 'CLAMCRON'
+0 3 * * * root /usr/bin/clamscan --recursive --infected --log=/var/log/clamav/scan.log /var/opt/gitlab/git-data/ /var/opt/gitlab/uploads/ 2>&1
+CLAMCRON
+
+# Daily signature update cron
+cat > /etc/cron.d/clamav-update << 'CLAMUPDATECRON'
+0 1 * * * root /usr/bin/freshclam --quiet 2>&1
+CLAMUPDATECRON
+
+# Add ClamAV logs to CloudWatch Agent config
+cat > /opt/aws/amazon-cloudwatch-agent/etc/clamav-logs.json << 'CWCLAMAV'
+{
+  "logs": {
+    "logs_collected": {
+      "files": {
+        "collect_list": [
+          {
+            "file_path": "/var/log/clamav/scan.log",
+            "log_group_name": "/${project_name}/clamav/scan",
+            "log_stream_name": "{instance_id}",
+            "timezone": "UTC"
+          },
+          {
+            "file_path": "/var/log/clamav/clamd.log",
+            "log_group_name": "/${project_name}/clamav/clamd",
+            "log_stream_name": "{instance_id}",
+            "timezone": "UTC"
+          }
+        ]
+      }
+    }
+  }
+}
+CWCLAMAV
+
+# Merge ClamAV log config into CloudWatch Agent and restart
+/opt/aws/amazon-cloudwatch-agent/bin/amazon-cloudwatch-agent-ctl \
+  -a append-config \
+  -m ec2 \
+  -s \
+  -c file:/opt/aws/amazon-cloudwatch-agent/etc/clamav-logs.json
 
 echo "=== GitLab CE Bootstrap Complete ==="

@@ -207,6 +207,47 @@ git config --global credential.helper 'cache --timeout=3600'</code><button class
     </tr>
   </table>
 
+  <h2>6. Administrator: Post-Deployment Setup</h2>
+  <div class="prereq">
+    <p>The following steps are for <strong>system administrators</strong> after running <code>terraform apply</code>.</p>
+  </div>
+
+  <h3><span class="step-number">1</span> Populate GitLab Admin PAT</h3>
+  <p>The user deactivation Lambda needs a GitLab admin Personal Access Token with <code>api</code> scope. Create one in GitLab, then store it:</p>
+  <pre><code>aws secretsmanager put-secret-value \
+  --secret-id gitlab/gitlab-admin-pat \
+  --secret-string "glpat-xxxxxxxxxxxxxxxxxxxx"</code><button class="copy-btn" onclick="copyCode(this)">Copy</button></pre>
+
+  <h3><span class="step-number">2</span> Validate User Deactivation Lambda</h3>
+  <p>The Lambda runs in <code>DRY_RUN</code> mode by default. Test invoke to verify it correctly identifies inactive users:</p>
+  <pre><code>aws lambda invoke --function-name gitlab-user-deactivation /dev/stdout</code><button class="copy-btn" onclick="copyCode(this)">Copy</button></pre>
+  <p>Once validated, set <code>dry_run = false</code> in <code>terraform.tfvars</code> and re-apply.</p>
+
+  <h3><span class="step-number">3</span> Verify Inspector Scanning</h3>
+  <p>Confirm Amazon Inspector is actively scanning the EC2 instance:</p>
+  <pre><code>aws inspector2 list-coverage --filter-criteria '{
+  "resourceType": [{"comparison": "EQUALS", "value": "AWS_EC2_INSTANCE"}]
+}'</code><button class="copy-btn" onclick="copyCode(this)">Copy</button></pre>
+
+  <h3><span class="step-number">4</span> Verify ClamAV</h3>
+  <p>Connect via SSM and verify ClamAV is running:</p>
+  <pre><code># Connect to the instance
+aws ssm start-session --target &lt;instance-id&gt;
+
+# Check ClamAV status
+systemctl status clamd@scan
+freshclam --version
+ls -la /var/log/clamav/</code><button class="copy-btn" onclick="copyCode(this)">Copy</button></pre>
+
+  <h3><span class="step-number">5</span> Store Root Password for Rotation</h3>
+  <p>The secrets rotation Lambda rotates the root password automatically every 90 days. Ensure the initial password is stored:</p>
+  <pre><code>aws secretsmanager put-secret-value \
+  --secret-id gitlab/root-password \
+  --secret-string "your-initial-root-password"</code><button class="copy-btn" onclick="copyCode(this)">Copy</button></pre>
+  <div class="note">
+    <strong>Note:</strong> After the first automatic rotation, the password in Secrets Manager will be updated automatically. Always retrieve the current password from Secrets Manager before logging in as root.
+  </div>
+
   <footer>
     <p>For support, contact your GitLab administrator.</p>
   </footer>
