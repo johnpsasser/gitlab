@@ -45,3 +45,8 @@ variable "backup_bucket_arn" {
   type        = string
   default     = "" # Set after backup module creates the bucket
 }
+
+variable "s3_access_logs_bucket_id" {
+  description = "S3 bucket ID for access logging"
+  type        = string
+}

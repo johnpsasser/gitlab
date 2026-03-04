@@ -20,8 +20,8 @@ resource "aws_lb" "gitlab" {
 
 resource "aws_lb_target_group" "gitlab" {
   name     = "${var.project_name}-tg"
-  port     = 80
-  protocol = "HTTP"
+  port     = 443
+  protocol = "HTTPS"
   vpc_id   = var.vpc_id
 
   health_check {
@@ -31,7 +31,7 @@ resource "aws_lb_target_group" "gitlab" {
     matcher             = "200,302"
     path                = "/-/health"
     port                = "traffic-port"
-    protocol            = "HTTP"
+    protocol            = "HTTPS"
     timeout             = 10
     unhealthy_threshold = 3
   }
@@ -44,7 +44,7 @@ resource "aws_lb_target_group" "gitlab" {
 resource "aws_lb_target_group_attachment" "gitlab" {
   target_group_arn = aws_lb_target_group.gitlab.arn
   target_id        = var.gitlab_instance_id
-  port             = 80
+  port             = 443
 }
 
 resource "aws_lb_listener" "https" {

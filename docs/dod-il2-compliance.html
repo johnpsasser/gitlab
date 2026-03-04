@@ -204,7 +204,7 @@
       <li><a href="#overview">Overview</a></li>
       <li><a href="#controls">Control Mapping by NIST 800-53 Family</a></li>
       <li><a href="#hosting">IL2 Hosting Requirement Confirmation</a></li>
-      <li><a href="#gaps">Residual Gaps and Remediation Plan</a></li>
+      <li><a href="#gaps">Remaining Gaps and Remediation Plan</a></li>
       <li><a href="#modules">Terraform Module Reference</a></li>
     </ol>
   </nav>
@@ -248,7 +248,7 @@
     <tr>
       <td>AC-3 Access Enforcement</td>
       <td><span class="status-implemented">Implemented</span></td>
-      <td>Security groups restrict ALB ingress to port 443 only, with AWS WAF filtering all requests (<code>modules/networking/security_groups.tf</code>). EC2 instance accepts HTTP only from ALB SG. No SSH (port 22) ingress on EC2. IAM policies scoped to least privilege (<code>modules/gitlab/iam.tf</code>).</td>
+      <td>Security groups restrict ALB ingress to port 443 only, with AWS WAF filtering all requests (<code>modules/networking/security_groups.tf</code>). EC2 instance accepts HTTPS only from ALB SG (port 443). No SSH (port 22) ingress on EC2. IAM policies scoped to least privilege (<code>modules/gitlab/iam.tf</code>).</td>
     </tr>
     <tr>
       <td>AC-4 Information Flow</td>
@@ -279,7 +279,7 @@
     <tr>
       <td>AU-2 Event Logging</td>
       <td><span class="status-implemented">Implemented</span></td>
-      <td>Multi-region CloudTrail captures all AWS API calls with CloudWatch Logs integration (<code>modules/monitoring/cloudtrail.tf</code>). VPC Flow Logs capture all network traffic at 60-second intervals (<code>modules/networking/flow_logs.tf</code>). ALB access logs capture all HTTP requests (<code>modules/alb/logging.tf</code>). WAF logs capture all evaluated requests to CloudWatch Logs (<code>modules/waf/waf.tf</code>). S3 access logging enabled on all buckets via dedicated log target bucket (<code>modules/networking/s3_access_logs.tf</code>). GitLab application audit events enabled.</td>
+      <td>Multi-region CloudTrail captures all AWS API calls with CloudWatch Logs integration (<code>modules/monitoring/cloudtrail.tf</code>). VPC Flow Logs capture all network traffic at 60-second intervals (<code>modules/networking/flow_logs.tf</code>). ALB access logs capture all HTTP requests (<code>modules/alb/logging.tf</code>). WAF logs capture all evaluated requests to CloudWatch Logs (<code>modules/waf/waf.tf</code>). S3 access logging enabled on all buckets &mdash; including the GitLab backup bucket (<code>modules/gitlab/backup.tf</code>) &mdash; via dedicated log target bucket (<code>modules/networking/s3_access_logs.tf</code>). GitLab application audit events enabled.</td>
     </tr>
     <tr>
       <td>AU-3 Content of Audit Records</td>
@@ -341,7 +341,7 @@
     <tr>
       <td>CM-7 Least Functionality</td>
       <td><span class="status-implemented">Implemented</span></td>
-      <td>Security groups allow only required ports: 443 inbound on ALB, 80 from ALB to EC2. No SSH access permitted. SSH daemon removed from EC2 bootstrap. Git operations are HTTPS-only with PATs (<code>modules/networking/security_groups.tf</code>).</td>
+      <td>Security groups allow only required ports: 443 inbound on ALB, 443 from ALB to EC2. No SSH access permitted. SSH daemon removed from EC2 bootstrap. Git operations are HTTPS-only with PATs (<code>modules/networking/security_groups.tf</code>).</td>
     </tr>
   </table>
 
@@ -457,7 +457,7 @@
     <tr>
       <td>SC-8 Transmission Confidentiality</td>
       <td><span class="status-implemented">Implemented</span></td>
-      <td>ALB terminates TLS 1.3 (<code>ELBSecurityPolicy-TLS13-1-2-2021-06</code>). All user and Git traffic encrypted via HTTPS. VPC endpoint traffic stays on AWS private network. <strong>Note</strong>: ALB-to-EC2 traffic is HTTP within the private subnet; end-to-end TLS is a future enhancement.</td>
+      <td>End-to-end TLS: ALB terminates TLS 1.3 (<code>ELBSecurityPolicy-TLS13-1-2-2021-06</code>) and forwards to EC2 over HTTPS (port 443) using a self-signed certificate on GitLab nginx (<code>user_data.sh</code>). ALB target group configured with <code>protocol = "HTTPS"</code> (<code>modules/alb/alb.tf</code>). All user and Git traffic encrypted in transit. VPC endpoint traffic stays on AWS private network.</td>
     </tr>
     <tr>
       <td>SC-12 Cryptographic Key Management</td>
@@ -539,55 +539,8 @@
   </table>
 
   <!-- Section 4: Gaps -->
-  <h2 id="gaps">4. Residual Gaps and Remediation Plan</h2>
+  <h2 id="gaps">4. Remaining Gaps and Remediation Plan</h2>
 
-  <h3>Resolved Gaps</h3>
-  <p>The following gaps have been remediated:</p>
-  <table>
-    <tr><th>Gap</th><th>NIST Control</th><th>Resolution</th></tr>
-    <tr>
-      <td>No formal Incident Response Plan</td>
-      <td>IR-1, IR-6, IR-8</td>
-      <td>IRP documented per NIST 800-61r2 (<code>docs/incident-response-plan.md</code>).</td>
-    </tr>
-    <tr>
-      <td>No vulnerability scanning</td>
-      <td>SI-2, RA-5</td>
-      <td>Amazon Inspector v2 enabled (<code>modules/security/inspector.tf</code>).</td>
-    </tr>
-    <tr>
-      <td>No formal System Security Plan (SSP)</td>
-      <td>PL-2</td>
-      <td>SSP documented per NIST 800-18 (<code>docs/system-security-plan.md</code>).</td>
-    </tr>
-    <tr>
-      <td>No login banner</td>
-      <td>AC-8</td>
-      <td>DoD consent banner configured in <code>user_data.sh</code> gitlab.rb.</td>
-    </tr>
-    <tr>
-      <td>No inactive account deprovisioning</td>
-      <td>AC-2(3)</td>
-      <td>Weekly Lambda deactivates users inactive &gt;90 days (<code>modules/lambda-user-deactivation/</code>).</td>
-    </tr>
-    <tr>
-      <td>Secrets rotation not automated</td>
-      <td>IA-5(1)</td>
-      <td>Lambda-based 90-day rotation for root password (<code>modules/rotation/</code>).</td>
-    </tr>
-    <tr>
-      <td>No dedicated antimalware</td>
-      <td>SI-3</td>
-      <td>ClamAV on EC2 + GuardDuty Malware Protection enabled.</td>
-    </tr>
-    <tr>
-      <td>No automated advisory ingestion</td>
-      <td>SI-5</td>
-      <td>Daily CISA KEV monitoring Lambda (<code>modules/lambda-cisa-alerts/</code>).</td>
-    </tr>
-  </table>
-
-  <h3>Remaining Gaps</h3>
   <table>
     <tr><th>#</th><th>Gap</th><th>NIST Control</th><th>Priority</th><th>Remediation</th></tr>
     <tr>
@@ -604,28 +557,7 @@
       <td><span class="priority-medium">Medium</span></td>
       <td>Establish annual security awareness training for all users. Document completion records.</td>
     </tr>
-    <tr>
-      <td>3</td>
-      <td>ALB-to-EC2 traffic unencrypted</td>
-      <td>SC-8</td>
-      <td><span class="priority-medium">Medium</span></td>
-      <td>Configure GitLab nginx for HTTPS internally; update ALB target group to HTTPS. Traffic is within a private subnet but end-to-end TLS is preferred.</td>
-    </tr>
-    <tr>
-      <td>4</td>
-      <td>Backup bucket access logging</td>
-      <td>AU-2</td>
-      <td><span class="priority-low">Low</span></td>
-      <td>Pass S3 access-logs bucket ID through to the GitLab module. Tracked as TODO in <code>modules/gitlab/backup.tf</code>.</td>
-    </tr>
   </table>
-
-  <h3>Prioritized Next Steps</h3>
-  <ul class="timeline">
-    <li><strong>30 days</strong> &mdash; Deploy centralized log analysis (OpenSearch or SIEM integration); enable end-to-end TLS (ALB-to-EC2 HTTPS).</li>
-    <li><strong>60 days</strong> &mdash; Establish security awareness training program; configure backup bucket access logging.</li>
-    <li><strong>Ongoing</strong> &mdash; Conduct IRP tabletop exercises; review and update SSP quarterly; rotate GitLab admin PAT.</li>
-  </ul>
 
   <!-- Section 5: Modules -->
   <h2 id="modules">5. Terraform Module Reference</h2>

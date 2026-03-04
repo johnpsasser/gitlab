@@ -6,7 +6,7 @@ Terraform infrastructure for deploying a self-hosted GitLab instance on AWS with
 
 ## Architecture Overview
 
-GitLab runs on a single EC2 instance inside private subnets. Developers connect over HTTPS to an internet-facing Application Load Balancer, which is protected by AWS WAF (OWASP common rules, known bad inputs, and rate limiting). The ALB terminates TLS 1.3 and forwards traffic to the GitLab instance over HTTP. Outbound internet access (for package updates) is routed through a NAT Gateway in the public subnets. Admin access to the instance is via SSM Session Manager only.
+GitLab runs on a single EC2 instance inside private subnets. Developers connect over HTTPS to an internet-facing Application Load Balancer, which is protected by AWS WAF (OWASP common rules, known bad inputs, and rate limiting). The ALB terminates TLS 1.3 and re-encrypts traffic to the GitLab instance over HTTPS (port 443) using a self-signed certificate. Outbound internet access (for package updates) is routed through a NAT Gateway in the public subnets. Admin access to the instance is via SSM Session Manager only.
 
 AWS service access from the private subnets is handled via VPC endpoints (S3, SSM, Secrets Manager, CloudWatch Logs), minimizing traffic that traverses the NAT Gateway. All data is encrypted at rest using Customer Managed KMS Keys, and all S3 buckets have public access blocked with lifecycle policies that transition objects to Glacier. All resources are tagged with the DoD IL2 `DataClassification` tag.
 
@@ -64,7 +64,7 @@ Internet-facing Application Load Balancer, target group, HTTPS listener, ACM cer
 - Internet-facing ALB spanning 2 public subnets
 - HTTPS listener on port 443 with TLS 1.3 policy (`ELBSecurityPolicy-TLS13-1-2-2021-06`)
 - ACM certificate with email validation
-- Target group forwarding HTTP port 80 with health checks on `/-/health`
+- Target group forwarding HTTPS port 443 with health checks on `/-/health`
 - Access logs to the S3 access logs bucket (managed by the `networking` module) with Glacier lifecycle
 - Deletion protection enabled
 
@@ -115,10 +115,19 @@ CISA Known Exploited Vulnerabilities (KEV) advisory monitoring (SI-5).
 - Tracks state in DynamoDB; sends SNS notifications for new entries
 - Complements Inspector's CISA KEV integration
 
+### `bootstrap`
+
+One-time S3 state backend setup (run independently before the main module).
+
+- S3 bucket for Terraform state with versioning, KMS encryption, and public access block
+- DynamoDB table for state locking (`PAY_PER_REQUEST`)
+- Non-current version expiration at 90 days
+- Prevent-destroy lifecycle on state bucket
+
 ## Prerequisites
 
 - AWS account with appropriate permissions
-- Terraform >= 1.0
+- Terraform >= 1.5
 - A domain name with DNS managed in Cloudflare
 - Cloudflare account with DNS zone for your domain
 

@@ -55,11 +55,22 @@ echo "$DATA_DEVICE /var/opt/gitlab xfs defaults,nofail 0 2" >> /etc/fstab
 curl -sS https://packages.gitlab.com/install/repositories/gitlab/gitlab-ce/script.rpm.sh | bash
 dnf install -y gitlab-ce
 
+# Generate self-signed certificate for internal ALB-to-EC2 TLS (SC-8)
+mkdir -p /etc/gitlab/ssl
+openssl req -new -newkey rsa:2048 -days 3650 -nodes -x509 \
+  -subj "/C=US/ST=Virginia/L=Arlington/O=$PROJECT/CN=$DOMAIN" \
+  -keyout "/etc/gitlab/ssl/$DOMAIN.key" \
+  -out "/etc/gitlab/ssl/$DOMAIN.crt"
+chmod 600 "/etc/gitlab/ssl/$DOMAIN.key"
+
 # Write gitlab.rb
 cat > /etc/gitlab/gitlab.rb << 'GITLABCFG'
 external_url 'https://${domain_name}'
-nginx['listen_https'] = false
-nginx['listen_port'] = 80
+nginx['listen_https'] = true
+nginx['listen_port'] = 443
+nginx['ssl_certificate'] = "/etc/gitlab/ssl/${domain_name}.crt"
+nginx['ssl_certificate_key'] = "/etc/gitlab/ssl/${domain_name}.key"
+nginx['redirect_http_to_https'] = false
 
 # Security hardening (IA-2, IA-5)
 gitlab_rails['gitlab_signup_enabled'] = false

@@ -36,7 +36,7 @@ This GitLab instance runs on a single EC2 instance in a private subnet with no p
 |---|---|---|
 | AC-2 Account Management | Implemented | GitLab native authentication with admin-only account creation (`gitlab_signup_enabled = false`). GitLab RBAC manages project/group access. Root password stored in Secrets Manager with CMK encryption (`modules/gitlab/secrets.tf`). |
 | AC-2(3) Inactive Accounts | Implemented | Lambda function (`modules/lambda-user-deactivation/`) runs weekly via EventBridge to deactivate GitLab users inactive for >90 days. Uses GitLab Admin API with PAT stored in Secrets Manager. Skips admin and bot accounts. SNS notifications on deactivations. Supports `DRY_RUN` mode for safe rollout. |
-| AC-3 Access Enforcement | Implemented | Security groups restrict ALB ingress to port 443 only, with AWS WAF filtering all requests (`modules/networking/security_groups.tf`). EC2 instance accepts HTTP only from ALB SG. No SSH (port 22) ingress on EC2. IAM policies scoped to least privilege (`modules/gitlab/iam.tf`). |
+| AC-3 Access Enforcement | Implemented | Security groups restrict ALB ingress to port 443 only, with AWS WAF filtering all requests (`modules/networking/security_groups.tf`). EC2 instance accepts HTTPS only from ALB SG (port 443). No SSH (port 22) ingress on EC2. IAM policies scoped to least privilege (`modules/gitlab/iam.tf`). |
 | AC-4 Information Flow | Implemented | Public ALB with AWS WAF and TLS 1.3 termination (`modules/alb/alb.tf`). WAF applies OWASP common rules, known bad input filtering, and rate limiting (`modules/waf/waf.tf`). EC2 in private subnet routed through NAT Gateway (`modules/networking/vpc.tf`). VPC endpoints keep AWS API traffic off the internet (`modules/networking/endpoints.tf`). |
 | AC-7 Unsuccessful Logon | Implemented | GitLab CE enforces account lockout after failed attempts. AWS WAF rate limiting (2000 requests per 5 minutes per IP) mitigates brute-force attacks at the network edge (`modules/waf/waf.tf`). |
 | AC-8 Login Banner | Implemented | Standard DoD consent banner configured via `gitlab_rails['extra_sign_in_text']` in `user_data.sh` gitlab.rb. Banner displays the USG-authorized use notice and monitoring consent text on the GitLab sign-in page. |
@@ -46,7 +46,7 @@ This GitLab instance runs on a single EC2 instance in a private subnet with no p
 
 | Control Area | Status | Implementation |
 |---|---|---|
-| AU-2 Event Logging | Implemented | Multi-region CloudTrail captures all AWS API calls with CloudWatch Logs integration (`modules/monitoring/cloudtrail.tf`). VPC Flow Logs capture all network traffic at 60-second intervals (`modules/networking/flow_logs.tf`). ALB access logs capture all HTTP requests (`modules/alb/logging.tf`). WAF logs capture all evaluated requests to CloudWatch Logs (`modules/waf/waf.tf`). S3 access logging enabled on all buckets via dedicated log target bucket (`modules/networking/s3_access_logs.tf`). GitLab application audit events enabled. |
+| AU-2 Event Logging | Implemented | Multi-region CloudTrail captures all AWS API calls with CloudWatch Logs integration (`modules/monitoring/cloudtrail.tf`). VPC Flow Logs capture all network traffic at 60-second intervals (`modules/networking/flow_logs.tf`). ALB access logs capture all HTTP requests (`modules/alb/logging.tf`). WAF logs capture all evaluated requests to CloudWatch Logs (`modules/waf/waf.tf`). S3 access logging enabled on all buckets -- including the GitLab backup bucket (`modules/gitlab/backup.tf`) -- via dedicated log target bucket (`modules/networking/s3_access_logs.tf`). GitLab application audit events enabled. |
 | AU-3 Content of Audit Records | Implemented | CloudTrail records include who, what, when, where, and outcome for every API call. Log file validation enabled (`enable_log_file_validation = true`). |
 | AU-6 Audit Review/Analysis | Partially Implemented | Logs collected and stored. CloudWatch alarms alert on instance health and unauthorized API calls (`modules/monitoring/cloudwatch.tf`). SNS topic delivers alarm notifications (`aws_sns_topic.alerts`). Security Hub provides aggregated security findings. **Gap**: No centralized SIEM for automated log correlation. |
 | AU-9 Protection of Audit Info | Implemented | All log buckets have public access blocked, S3 versioning enabled, and CMK encryption (`modules/monitoring/cloudtrail.tf`, `modules/networking/flow_logs.tf`). CloudTrail encrypted with dedicated CMK (`modules/kms/main.tf`, `cloudtrail` key). CloudTrail log file validation prevents tampering. |
@@ -66,7 +66,7 @@ This GitLab instance runs on a single EC2 instance in a private subnet with no p
 | CM-2 Baseline Configuration | Implemented | Entire infrastructure defined as Terraform IaC (`main.tf` and `modules/`). EC2 instance built from Amazon Linux 2023 AMI with templated `user_data.sh`. GitLab configured via `gitlab.rb` template. AWS Config continuously records baseline configuration state. |
 | CM-3 Configuration Change Control | Implemented | All changes go through Terraform plan/apply workflow. Checkov scans enforce security policies pre-deploy. Git history provides full change audit trail. AWS Config detects configuration drift. |
 | CM-6 Configuration Settings | Implemented | ALB enforces TLS 1.3 minimum (`ssl_policy = "ELBSecurityPolicy-TLS13-1-2-2021-06"`). IMDSv2 required on EC2 (`http_tokens = "required"`). Invalid header fields dropped on ALB (`drop_invalid_header_fields = true`). KMS key rotation enabled on all CMKs. |
-| CM-7 Least Functionality | Implemented | Security groups allow only required ports: 443 inbound on ALB, 80 from ALB to EC2. No SSH access permitted. SSH daemon removed from EC2 bootstrap. Git operations are HTTPS-only with PATs (`modules/networking/security_groups.tf`). |
+| CM-7 Least Functionality | Implemented | Security groups allow only required ports: 443 inbound on ALB, 443 from ALB to EC2. No SSH access permitted. SSH daemon removed from EC2 bootstrap. Git operations are HTTPS-only with PATs (`modules/networking/security_groups.tf`). |
 
 ### CP -- Contingency Planning
 
@@ -112,7 +112,7 @@ This GitLab instance runs on a single EC2 instance in a private subnet with no p
 |---|---|---|
 | SC-5 Denial of Service | Implemented | AWS WAF rate limiting at 2000 requests per 5 minutes per IP (`modules/waf/waf.tf`). ALB inherently distributes load. GitLab application-level rate limiting configured in `gitlab.rb`. |
 | SC-7 Boundary Protection | Implemented | EC2 in private subnets with no public IP (`modules/networking/vpc.tf`). Public ALB with AWS WAF. WAF enforces AWSManagedRulesCommonRuleSet (OWASP Top 10), AWSManagedRulesKnownBadInputsRuleSet, and rate limiting. VPC endpoints eliminate internet traversal for AWS API calls (`modules/networking/endpoints.tf`). |
-| SC-8 Transmission Confidentiality | Implemented | ALB terminates TLS 1.3 (`ELBSecurityPolicy-TLS13-1-2-2021-06`). All user and Git traffic encrypted via HTTPS. VPC endpoint traffic stays on AWS private network. **Note**: ALB-to-EC2 traffic is HTTP within the private subnet; end-to-end TLS is a future enhancement. |
+| SC-8 Transmission Confidentiality | Implemented | End-to-end TLS: ALB terminates TLS 1.3 (`ELBSecurityPolicy-TLS13-1-2-2021-06`) and forwards to EC2 over HTTPS (port 443) using a self-signed certificate on GitLab nginx (`user_data.sh`). ALB target group configured with `protocol = "HTTPS"` (`modules/alb/alb.tf`). All user and Git traffic encrypted in transit. VPC endpoint traffic stays on AWS private network. |
 | SC-12 Cryptographic Key Management | Implemented | Customer Managed KMS Keys (CMKs) with automatic annual rotation for all encryption (`modules/kms/main.tf`): general-purpose key (S3, Secrets Manager), dedicated CloudTrail key with service-scoped policy, and EBS encryption key. ACM manages TLS certificates (`modules/alb/acm.tf`). |
 | SC-13 Cryptographic Protection | Implemented | FIPS-validated AMI recommended in `user_data.sh`. TLS 1.3 enforced on ALB. CMK encryption at rest for all data stores. KMS key policies restrict usage to account root and authorized services. |
 | SC-28 Protection of Information at Rest | Implemented | EBS root and data volumes encrypted with EBS CMK (`modules/gitlab/ec2.tf`). All S3 buckets encrypted with general CMK (backups, CloudTrail, flow logs, Config) or AES-256 (ALB logs, which do not support KMS). Secrets Manager secrets encrypted with general CMK. Public access blocked on every bucket. |
@@ -141,37 +141,12 @@ This GitLab instance runs on a single EC2 instance in a private subnet with no p
 
 ---
 
-## 4. Residual Gaps and Remediation Plan
-
-### Resolved Gaps
-
-The following gaps have been remediated:
-
-| Gap | NIST Control | Resolution |
-|---|---|---|
-| No formal Incident Response Plan | IR-1, IR-6, IR-8 | IRP documented per NIST 800-61r2 (`docs/incident-response-plan.md`). |
-| No vulnerability scanning | SI-2, RA-5 | Amazon Inspector v2 enabled (`modules/security/inspector.tf`). |
-| No formal System Security Plan (SSP) | PL-2 | SSP documented per NIST 800-18 (`docs/system-security-plan.md`). |
-| No login banner | AC-8 | DoD consent banner configured in `user_data.sh` gitlab.rb. |
-| No inactive account deprovisioning | AC-2(3) | Weekly Lambda deactivates users inactive >90 days (`modules/lambda-user-deactivation/`). |
-| Secrets rotation not automated | IA-5(1) | Lambda-based 90-day rotation for root password (`modules/rotation/`). |
-| No dedicated antimalware | SI-3 | ClamAV on EC2 + GuardDuty Malware Protection enabled. |
-| No automated advisory ingestion | SI-5 | Daily CISA KEV monitoring Lambda (`modules/lambda-cisa-alerts/`). |
-
-### Remaining Gaps
+## 4. Remaining Gaps and Remediation Plan
 
 | # | Gap | NIST Control | Priority | Remediation |
 |---|---|---|---|---|
 | 1 | No centralized log analysis / SIEM | AU-6, SI-4 | High | Deploy Amazon OpenSearch or integrate with a SIEM (e.g., Splunk, Elastic). Create CloudWatch Logs Insights queries for security events. |
 | 2 | No security awareness training program | AT-2 | Medium | Establish annual security awareness training for all users. Document completion records. |
-| 3 | ALB-to-EC2 traffic unencrypted | SC-8 | Medium | Configure GitLab nginx for HTTPS internally; update ALB target group to HTTPS. Traffic is within a private subnet but end-to-end TLS is preferred. |
-| 4 | Backup bucket access logging | AU-2 | Low | Pass S3 access-logs bucket ID through to the GitLab module. Tracked as TODO in `modules/gitlab/backup.tf`. |
-
-### Prioritized Next Steps
-
-1. **30 days** -- Deploy centralized log analysis (OpenSearch or SIEM integration); enable end-to-end TLS (ALB-to-EC2 HTTPS).
-2. **60 days** -- Establish security awareness training program; configure backup bucket access logging.
-3. **Ongoing** -- Conduct IRP tabletop exercises; review and update SSP quarterly; rotate GitLab admin PAT.
 
 ---
 

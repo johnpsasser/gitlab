@@ -50,16 +50,17 @@ module "monitoring" {
 
 # --- GitLab ---
 module "gitlab" {
-  source            = "./modules/gitlab"
-  project_name      = var.project_name
-  vpc_id            = module.networking.vpc_id
-  subnet_id         = module.networking.private_subnet_ids[0]
-  security_group_id = module.networking.gitlab_security_group_id
-  instance_type     = var.instance_type
-  data_volume_size  = var.data_volume_size
-  domain_name       = var.domain_name
-  ebs_kms_key_id    = module.kms.ebs_key_id
-  kms_key_id        = module.kms.general_key_id
+  source                   = "./modules/gitlab"
+  project_name             = var.project_name
+  vpc_id                   = module.networking.vpc_id
+  subnet_id                = module.networking.private_subnet_ids[0]
+  security_group_id        = module.networking.gitlab_security_group_id
+  instance_type            = var.instance_type
+  data_volume_size         = var.data_volume_size
+  domain_name              = var.domain_name
+  ebs_kms_key_id           = module.kms.ebs_key_id
+  kms_key_id               = module.kms.general_key_id
+  s3_access_logs_bucket_id = module.networking.s3_access_logs_bucket_id
 }
 
 # --- ALB ---
