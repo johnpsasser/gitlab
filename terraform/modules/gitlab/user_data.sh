@@ -61,10 +61,12 @@ external_url 'https://${domain_name}'
 nginx['listen_https'] = false
 nginx['listen_port'] = 80
 
-# Security hardening
+# Security hardening (IA-2, IA-5)
 gitlab_rails['gitlab_signup_enabled'] = false
 gitlab_rails['password_authentication_enabled_for_web'] = true  # GitLab native authentication for IL2 compliance
 gitlab_rails['password_minimum_length'] = 15
+gitlab_rails['require_two_factor_authentication'] = true         # IA-2(1): MFA for all users
+gitlab_rails['two_factor_authentication_grace_period'] = 0       # No grace period — enforce immediately
 gitlab_rails['gravatar_enabled'] = false
 gitlab_rails['default_projects_features_visibility_level'] = 'private'
 gitlab_rails['default_project_visibility'] = 'private'
