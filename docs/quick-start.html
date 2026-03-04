@@ -128,7 +128,8 @@
   <div class="prereq">
     <p>Before you begin, ensure you have:</p>
     <ul>
-      <li>A <strong>Google Workspace</strong> account on <code>@fedrock.com</code></li>
+      <li>A <strong>GitLab account</strong> (created by your administrator)</li>
+      <li>An <strong>authenticator app</strong> for two-factor authentication (e.g., Google Authenticator, Authy, 1Password)</li>
       <li><strong>Git</strong> installed on your machine</li>
     </ul>
   </div>
@@ -136,12 +137,13 @@
   <h2>2. Connect to GitLab</h2>
   <ol>
     <li>Open your browser and navigate to: <pre><code>https://code.fedrock.com</code><button class="copy-btn" onclick="copyCode(this)">Copy</button></pre></li>
-    <li>Click <strong>"Sign in with Google"</strong></li>
-    <li>Authenticate with your <strong><code>@fedrock.com</code></strong> Google Workspace account</li>
-    <li>You'll be redirected to your GitLab dashboard</li>
+    <li>Enter your <strong>username</strong> and <strong>password</strong> provided by your administrator</li>
+    <li>On first login, you'll be prompted to set up <strong>two-factor authentication</strong> (2FA)</li>
+    <li>Scan the QR code with your authenticator app</li>
+    <li>Enter the 6-digit code to verify, then save your recovery codes</li>
   </ol>
   <div class="note">
-    <strong>First time?</strong> Your account is created automatically on first sign-in. You'll have a "Regular" role by default. Ask your admin to grant additional permissions if needed.
+    <strong>First time?</strong> Your administrator will create your account and provide initial credentials. You'll be required to set up 2FA on your first login. Store your recovery codes in a secure location.
   </div>
 
   <h2>3. Create a Personal Access Token</h2>
@@ -184,12 +186,16 @@ git config --global credential.helper 'cache --timeout=3600'</code><button class
       <td>Verify your internet connection. If the issue persists, check with your admin to confirm the service is running.</td>
     </tr>
     <tr>
-      <td><strong>Google OAuth redirect error</strong></td>
-      <td>Ensure you're signing in with your <strong>@fedrock.com</strong> Google account, not a personal one. Clear your browser cookies for the GitLab domain and try again.</td>
+      <td><strong>2FA setup not working</strong></td>
+      <td>Ensure your authenticator app's time is synced. Try a different authenticator app. If locked out, contact your administrator to reset 2FA.</td>
+    </tr>
+    <tr>
+      <td><strong>Account locked after failed logins</strong></td>
+      <td>GitLab locks accounts after multiple failed attempts. Wait 10 minutes or contact your administrator to unlock.</td>
     </tr>
     <tr>
       <td><strong>HTTPS clone asks for username</strong></td>
-      <td>Use your GitLab username (not email). For the password, use your Personal Access Token, not your Google password.</td>
+      <td>Use your GitLab username (not email). For the password, use your Personal Access Token.</td>
     </tr>
     <tr>
       <td><strong>SSL certificate error</strong></td>
