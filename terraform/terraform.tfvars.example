@@ -12,9 +12,10 @@ domain_name = "gitlab.yourcompany.com"
 # Google Workspace domain for OAuth restriction
 google_oauth_hd = "yourcompany.com"
 
-# Cross-account DNS
-dns_account_role_arn = "arn:aws:iam::ACCOUNT_ID:role/GitLabDNSAccess"
-route53_zone_id      = "Z0123456789ABCDEFGHIJ"
+# DNS is managed via Cloudflare (outside Terraform).
+# After terraform apply, create a CNAME record in Cloudflare pointing
+# your domain to the ALB DNS name (shown in terraform output alb_dns_name).
+# Set Cloudflare proxy status to "DNS only" (gray cloud).
 
 # Backup
 data_volume_size          = 100

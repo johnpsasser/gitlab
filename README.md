@@ -1,6 +1,6 @@
 # Self-Hosted GitLab on AWS
 
-Terraform infrastructure for deploying a self-hosted GitLab instance on AWS with a security-hardened, air-gapped network design. Access is provided exclusively through Tailscale VPN — there is no public-facing endpoint.
+Terraform infrastructure for deploying a self-hosted GitLab instance on AWS with a security-hardened network design aligned with DoD IL2 requirements. Access is provided exclusively through Tailscale VPN — there is no public-facing endpoint.
 
 ![Architecture Diagram](docs/architecture.png)
 
@@ -42,17 +42,10 @@ Internal Application Load Balancer, target group, HTTPS listener, ACM certificat
 
 - Internal ALB spanning 2 private subnets
 - HTTPS listener on port 443 with TLS 1.3 policy (`ELBSecurityPolicy-TLS13-1-2-2021-06`)
-- ACM certificate with DNS validation in a cross-account Route 53 zone
+- ACM certificate with email validation
 - Target group forwarding HTTP port 80 with health checks on `/-/health`
 - Access logs to a dedicated S3 bucket with Glacier lifecycle
 - Deletion protection enabled
-
-### `dns`
-
-Private Route 53 hosted zone and DNS record for GitLab.
-
-- Private hosted zone associated with the VPC
-- A record aliasing the GitLab domain to the internal ALB
 
 ### `monitoring`
 
@@ -65,8 +58,8 @@ CloudTrail and CloudWatch alarms.
 
 - AWS account with appropriate permissions
 - Terraform >= 1.0
-- A domain name and Route 53 hosted zone in a DNS account
-- An IAM role ARN for cross-account DNS access
+- A domain name with DNS managed in Cloudflare
+- Cloudflare account with DNS zone for your domain
 - Google OAuth credentials (for GitLab SSO)
 - Tailscale auth key
 
@@ -80,11 +73,25 @@ terraform plan
 terraform apply
 ```
 
+After `terraform apply`, approve the ACM certificate validation email sent to the
+domain's admin contacts (admin@yourdomain.com, etc.). This is a one-time manual step.
+
 Connect to the instance via SSM:
 
 ```bash
 aws ssm start-session --target <instance-id>
 ```
+
+## DNS Configuration (Cloudflare)
+
+DNS is managed via Cloudflare, outside of Terraform. After deployment:
+
+1. Get the ALB DNS name from Terraform outputs: `terraform output alb_dns_name`
+2. In Cloudflare, create a CNAME record:
+   - **Name:** `gitlab` (or your subdomain)
+   - **Target:** The ALB DNS name from step 1
+   - **Proxy status:** DNS only (gray cloud) — traffic routes through Tailscale VPN, not Cloudflare proxy
+3. Since the ALB is internal, this DNS record is only resolvable when connected via Tailscale
 
 ## Outputs
 

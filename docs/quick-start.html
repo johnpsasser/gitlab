@@ -128,26 +128,42 @@
   <div class="prereq">
     <p>Before you begin, ensure you have:</p>
     <ul>
-      <li>A <strong>Google Workspace</strong> account on your organization's domain</li>
-      <li>A <strong>Tailscale</strong> account (invite from your team admin)</li>
+      <li>A <strong>Google Workspace</strong> account on <code>@fedrock.com</code></li>
+      <li><strong>Tailscale</strong> installed (see step 2 &mdash; sign in with your <code>@fedrock.com</code> Google account)</li>
       <li><strong>Git</strong> installed on your machine</li>
+      <li><strong>DNS</strong> is managed via Cloudflare — no action needed from developers</li>
     </ul>
   </div>
 
-  <h2>2. Install Tailscale</h2>
-  <p>Tailscale provides VPN access to the GitLab instance. Install it for your platform:</p>
+  <h2>2. Install &amp; Connect Tailscale</h2>
+  <p>Tailscale provides VPN access to the GitLab instance. There is no other way to reach it &mdash; the server has no public endpoint.</p>
+
+  <h3>Install</h3>
   <table>
     <tr><th>Platform</th><th>Install</th></tr>
     <tr><td>macOS</td><td><a href="https://tailscale.com/download/mac">Download from Tailscale</a> or <code>brew install --cask tailscale</code></td></tr>
     <tr><td>Linux</td><td><a href="https://tailscale.com/download/linux">Install script</a>: <code>curl -fsSL https://tailscale.com/install.sh | sh</code></td></tr>
     <tr><td>Windows</td><td><a href="https://tailscale.com/download/windows">Download from Tailscale</a></td></tr>
   </table>
-  <p>After installing, open Tailscale and sign in with your organization credentials. You should see a green "Connected" status.</p>
+
+  <h3>Sign in</h3>
+  <ol>
+    <li>Open the Tailscale app</li>
+    <li>Click <strong>"Sign in"</strong></li>
+    <li>Choose <strong>"Sign in with Google"</strong></li>
+    <li>Use your <strong><code>@fedrock.com</code></strong> Google Workspace account</li>
+    <li>You'll automatically join the <strong>fedrock.com</strong> tailnet &mdash; no invite code needed</li>
+  </ol>
+  <p>You should see a green "Connected" status in your menu bar / system tray.</p>
+
+  <div class="note">
+    <strong>Important:</strong> You must sign in with your <code>@fedrock.com</code> Google account, not a personal Google account. The tailnet is tied to the fedrock.com domain.
+  </div>
 
   <h2>3. Connect to GitLab</h2>
   <ol>
     <li>Ensure Tailscale is connected (check the icon in your menu bar/system tray)</li>
-    <li>Open your browser and navigate to: <pre><code>https://gitlab.yourcompany.com</code><button class="copy-btn" onclick="copyCode(this)">Copy</button></pre></li>
+    <li>Open your browser and navigate to: <pre><code>https://code.fedrock.com</code><button class="copy-btn" onclick="copyCode(this)">Copy</button></pre></li>
     <li>Click <strong>"Sign in with Google"</strong></li>
     <li>Authenticate with your Google Workspace account</li>
     <li>You'll be redirected to your GitLab dashboard</li>
@@ -158,7 +174,7 @@
 
   <h2>4. Set Up Your SSH Key</h2>
   <h3><span class="step-number">1</span>Generate an SSH key (if you don't have one)</h3>
-  <pre><code>ssh-keygen -t ed25519 -C "your.email@yourcompany.com"</code><button class="copy-btn" onclick="copyCode(this)">Copy</button></pre>
+  <pre><code>ssh-keygen -t ed25519 -C "your.name@fedrock.com"</code><button class="copy-btn" onclick="copyCode(this)">Copy</button></pre>
   <p>Press Enter to accept the default file location. Set a passphrase when prompted.</p>
 
   <h3><span class="step-number">2</span>Copy your public key</h3>
@@ -181,14 +197,14 @@ Get-Content ~/.ssh/id_ed25519.pub | Set-Clipboard</code><button class="copy-btn"
 
   <h3><span class="step-number">4</span>Configure SSH</h3>
   <p>Add the following to <code>~/.ssh/config</code>:</p>
-  <pre><code>Host gitlab.yourcompany.com
-  HostName gitlab.yourcompany.com
+  <pre><code>Host code.fedrock.com
+  HostName code.fedrock.com
   User git
   IdentityFile ~/.ssh/id_ed25519
   AddKeysToAgent yes</code><button class="copy-btn" onclick="copyCode(this)">Copy</button></pre>
 
   <h3><span class="step-number">5</span>Test the connection</h3>
-  <pre><code>ssh -T git@gitlab.yourcompany.com</code><button class="copy-btn" onclick="copyCode(this)">Copy</button></pre>
+  <pre><code>ssh -T git@code.fedrock.com</code><button class="copy-btn" onclick="copyCode(this)">Copy</button></pre>
   <p>You should see: <code>Welcome to GitLab, @yourusername!</code></p>
 
   <h2>5. Create a Personal Access Token</h2>
@@ -214,10 +230,10 @@ Get-Content ~/.ssh/id_ed25519.pub | Set-Clipboard</code><button class="copy-btn"
 
   <h2>6. Clone Your First Repository</h2>
   <h3>Via SSH (recommended)</h3>
-  <pre><code>git clone git@gitlab.yourcompany.com:your-group/your-project.git</code><button class="copy-btn" onclick="copyCode(this)">Copy</button></pre>
+  <pre><code>git clone git@code.fedrock.com:your-group/your-project.git</code><button class="copy-btn" onclick="copyCode(this)">Copy</button></pre>
 
   <h3>Via HTTPS (with personal access token)</h3>
-  <pre><code>git clone https://gitlab.yourcompany.com/your-group/your-project.git
+  <pre><code>git clone https://code.fedrock.com/your-group/your-project.git
 # When prompted for password, use your Personal Access Token</code><button class="copy-btn" onclick="copyCode(this)">Copy</button></pre>
 
   <p>To avoid entering your token every time, configure Git credential storage:</p>
@@ -236,7 +252,7 @@ git config --global credential.helper 'cache --timeout=3600'</code><button class
     </tr>
     <tr>
       <td><strong>Google OAuth redirect error</strong></td>
-      <td>Ensure you're signing in with your <strong>organization</strong> Google account, not a personal one. Clear your browser cookies for the GitLab domain and try again.</td>
+      <td>Ensure you're signing in with your <strong>@fedrock.com</strong> Google account, not a personal one. Clear your browser cookies for the GitLab domain and try again.</td>
     </tr>
     <tr>
       <td><strong>"Permission denied (publickey)"</strong></td>

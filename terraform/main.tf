@@ -11,22 +11,6 @@ provider "aws" {
 }
 
 provider "aws" {
-  alias  = "dns_account"
-  region = var.aws_region
-
-  assume_role {
-    role_arn = var.dns_account_role_arn
-  }
-
-  default_tags {
-    tags = {
-      Project   = var.project_name
-      ManagedBy = "terraform"
-    }
-  }
-}
-
-provider "aws" {
   alias  = "replication"
   region = var.backup_replication_region
 
@@ -74,21 +58,5 @@ module "alb" {
   subnet_ids         = module.networking.private_subnet_ids
   security_group_id  = module.networking.alb_security_group_id
   domain_name        = var.domain_name
-  route53_zone_id    = var.route53_zone_id
   gitlab_instance_id = module.gitlab.instance_id
-
-  providers = {
-    aws             = aws
-    aws.dns_account = aws.dns_account
-  }
-}
-
-# --- DNS ---
-module "dns" {
-  source       = "./modules/dns"
-  project_name = var.project_name
-  domain_name  = var.domain_name
-  vpc_id       = module.networking.vpc_id
-  alb_dns_name = module.alb.alb_dns_name
-  alb_zone_id  = module.alb.alb_zone_id
 }

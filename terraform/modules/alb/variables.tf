@@ -19,11 +19,6 @@ variable "domain_name" {
   type = string
 }
 
-variable "route53_zone_id" {
-  description = "Route 53 zone ID in DNS account for ACM validation"
-  type        = string
-}
-
 variable "gitlab_instance_id" {
   type = string
 }

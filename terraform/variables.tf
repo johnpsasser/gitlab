@@ -21,16 +21,6 @@ variable "domain_name" {
   type        = string
 }
 
-variable "dns_account_role_arn" {
-  description = "IAM role ARN in the DNS account for cross-account Route 53 access"
-  type        = string
-}
-
-variable "route53_zone_id" {
-  description = "Route 53 hosted zone ID in the DNS account for ACM validation"
-  type        = string
-}
-
 variable "google_oauth_hd" {
   description = "Google Workspace hosted domain for OAuth restriction"
   type        = string
