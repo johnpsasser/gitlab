@@ -76,7 +76,7 @@ resource "aws_s3_bucket_lifecycle_configuration" "this" {
 
 # Access logging (conditional)
 resource "aws_s3_bucket_logging" "this" {
-  count  = var.logging_target_bucket_id != "" ? 1 : 0
+  count  = var.enable_logging ? 1 : 0
   bucket = aws_s3_bucket.this.id
 
   target_bucket = var.logging_target_bucket_id

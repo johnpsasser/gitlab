@@ -14,7 +14,7 @@ resource "aws_sns_topic_subscription" "email" {
 }
 
 resource "aws_cloudwatch_metric_alarm" "cpu_high" {
-  count = var.gitlab_instance_id != "" ? 1 : 0
+  count = var.enable_instance_alarms ? 1 : 0
 
   alarm_name          = "${var.project_name}-gitlab-cpu-high"
   comparison_operator = "GreaterThanThreshold"
@@ -38,7 +38,7 @@ resource "aws_cloudwatch_metric_alarm" "cpu_high" {
 }
 
 resource "aws_cloudwatch_metric_alarm" "status_check" {
-  count = var.gitlab_instance_id != "" ? 1 : 0
+  count = var.enable_instance_alarms ? 1 : 0
 
   alarm_name          = "${var.project_name}-gitlab-status-check"
   comparison_operator = "GreaterThanThreshold"
@@ -91,7 +91,7 @@ resource "aws_cloudwatch_metric_alarm" "unauthorized_api_calls" {
 }
 
 resource "aws_cloudwatch_metric_alarm" "disk_high" {
-  count = var.gitlab_instance_id != "" ? 1 : 0
+  count = var.enable_instance_alarms ? 1 : 0
 
   alarm_name          = "${var.project_name}-gitlab-disk-high"
   comparison_operator = "GreaterThanThreshold"
@@ -117,7 +117,7 @@ resource "aws_cloudwatch_metric_alarm" "disk_high" {
 }
 
 resource "aws_cloudwatch_metric_alarm" "memory_high" {
-  count = var.gitlab_instance_id != "" ? 1 : 0
+  count = var.enable_instance_alarms ? 1 : 0
 
   alarm_name          = "${var.project_name}-gitlab-memory-high"
   comparison_operator = "GreaterThanThreshold"
@@ -141,7 +141,7 @@ resource "aws_cloudwatch_metric_alarm" "memory_high" {
 }
 
 resource "aws_cloudwatch_metric_alarm" "alb_unhealthy_hosts" {
-  count = var.alb_arn_suffix != "" ? 1 : 0
+  count = var.enable_alb_alarms ? 1 : 0
 
   alarm_name          = "${var.project_name}-alb-unhealthy-hosts"
   comparison_operator = "GreaterThanThreshold"

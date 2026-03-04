@@ -38,6 +38,12 @@ variable "logging_target_bucket_id" {
   default     = ""
 }
 
+variable "enable_logging" {
+  description = "Whether to enable S3 access logging"
+  type        = bool
+  default     = false
+}
+
 variable "logging_target_prefix" {
   description = "Prefix for access log objects"
   type        = string

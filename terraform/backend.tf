@@ -6,7 +6,7 @@ terraform {
     #
     # Example: If account ID is 123456789012, the bucket name is:
     #   gitlab-terraform-state-123456789012
-    bucket         = "gitlab-terraform-state-ACCOUNT_ID" # <-- REPLACE ACCOUNT_ID
+    bucket         = "gitlab-terraform-state-325216836442"
     key            = "gitlab/terraform.tfstate"
     region         = "us-east-1"
     dynamodb_table = "gitlab-terraform-locks"

@@ -1,4 +1,5 @@
 resource "aws_security_group" "alb" {
+  #checkov:skip=CKV_AWS_260:ALB intentionally allows HTTP/80 from 0.0.0.0/0 for HTTPS redirect — standard public ALB pattern
   name_prefix = "${var.project_name}-alb-"
   description = "Security group for GitLab ALB"
   vpc_id      = aws_vpc.main.id

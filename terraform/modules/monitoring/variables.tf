@@ -5,7 +5,12 @@ variable "project_name" {
 variable "gitlab_instance_id" {
   description = "EC2 instance ID for CloudWatch alarms"
   type        = string
-  default     = "" # Empty until EC2 module is wired
+}
+
+variable "enable_instance_alarms" {
+  description = "Whether to create EC2 instance-based CloudWatch alarms"
+  type        = bool
+  default     = true
 }
 
 variable "kms_key_arn" {
@@ -26,11 +31,15 @@ variable "alert_email" {
 variable "alb_arn_suffix" {
   description = "ARN suffix of the ALB for CloudWatch alarms"
   type        = string
-  default     = ""
 }
 
 variable "target_group_arn_suffix" {
   description = "ARN suffix of the ALB target group for CloudWatch alarms"
   type        = string
-  default     = ""
+}
+
+variable "enable_alb_alarms" {
+  description = "Whether to create ALB-based CloudWatch alarms"
+  type        = bool
+  default     = true
 }

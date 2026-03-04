@@ -18,6 +18,8 @@ resource "aws_iam_role" "dlm" {
 }
 
 resource "aws_iam_role_policy" "dlm" {
+  #checkov:skip=CKV_AWS_290:DLM requires broad EC2 snapshot permissions across all volumes — cannot be scoped to specific resource ARNs
+  #checkov:skip=CKV_AWS_355:DLM snapshot actions (CreateSnapshot, DeleteSnapshot) require Resource "*" per AWS documentation
   name = "${var.project_name}-dlm-policy"
   role = aws_iam_role.dlm.id
 

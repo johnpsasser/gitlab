@@ -34,6 +34,8 @@ resource "aws_kms_alias" "general" {
 
 data "aws_iam_policy_document" "general_key" {
   #checkov:skip=CKV_AWS_356:KMS key policy resource "*" refers to the key itself (standard KMS key policy pattern)
+  #checkov:skip=CKV_AWS_111:KMS key policy requires administrative write actions (Create*, Put*, etc.) for root account key management
+  #checkov:skip=CKV_AWS_109:KMS key policy grants root account key administration permissions — standard AWS KMS pattern
   # Allow the account root key administration
   statement {
     sid    = "EnableRootAccountKeyAdministration"
@@ -113,6 +115,8 @@ resource "aws_kms_alias" "cloudtrail" {
 
 data "aws_iam_policy_document" "cloudtrail_key" {
   #checkov:skip=CKV_AWS_356:KMS key policy resource "*" refers to the key itself (standard KMS key policy pattern)
+  #checkov:skip=CKV_AWS_111:KMS key policy requires administrative write actions (Create*, Put*, etc.) for root account key management
+  #checkov:skip=CKV_AWS_109:KMS key policy grants root account key administration permissions — standard AWS KMS pattern
   # Allow the account root key administration
   statement {
     sid    = "EnableRootAccountKeyAdministration"
@@ -232,6 +236,8 @@ resource "aws_kms_alias" "ebs" {
 
 data "aws_iam_policy_document" "ebs_key" {
   #checkov:skip=CKV_AWS_356:KMS key policy resource "*" refers to the key itself (standard KMS key policy pattern)
+  #checkov:skip=CKV_AWS_111:KMS key policy requires administrative write actions (Create*, Put*, etc.) for root account key management
+  #checkov:skip=CKV_AWS_109:KMS key policy grants root account key administration permissions — standard AWS KMS pattern
   # Allow the account root key administration
   statement {
     sid    = "EnableRootAccountKeyAdministration"

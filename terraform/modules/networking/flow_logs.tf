@@ -11,6 +11,7 @@ module "flow_logs_bucket" {
   expiration_days          = 365
   logging_target_bucket_id = aws_s3_bucket.access_logs.id
   logging_target_prefix    = "flow-logs/"
+  enable_logging           = true
 
   additional_policy_statements = jsonencode([
     {
