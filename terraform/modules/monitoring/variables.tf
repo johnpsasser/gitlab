@@ -23,3 +23,15 @@ variable "alert_email" {
   type        = string
   default     = ""
 }
+
+variable "alb_arn_suffix" {
+  description = "ARN suffix of the ALB for CloudWatch alarms"
+  type        = string
+  default     = ""
+}
+
+variable "target_group_arn_suffix" {
+  description = "ARN suffix of the ALB target group for CloudWatch alarms"
+  type        = string
+  default     = ""
+}

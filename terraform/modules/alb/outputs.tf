@@ -23,3 +23,13 @@ output "acm_validation_records" {
     }
   }
 }
+
+output "alb_arn_suffix" {
+  description = "ARN suffix of the ALB for CloudWatch metrics"
+  value       = aws_lb.gitlab.arn_suffix
+}
+
+output "target_group_arn_suffix" {
+  description = "ARN suffix of the ALB target group for CloudWatch metrics"
+  value       = aws_lb_target_group.gitlab.arn_suffix
+}

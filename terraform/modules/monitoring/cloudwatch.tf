@@ -90,3 +90,78 @@ resource "aws_cloudwatch_metric_alarm" "unauthorized_api_calls" {
     Name = "${var.project_name}-unauthorized-api-alarm"
   }
 }
+
+resource "aws_cloudwatch_metric_alarm" "disk_high" {
+  count = var.gitlab_instance_id != "" ? 1 : 0
+
+  alarm_name          = "${var.project_name}-gitlab-disk-high"
+  comparison_operator = "GreaterThanThreshold"
+  evaluation_periods  = 1
+  metric_name         = "disk_used_percent"
+  namespace           = "CWAgent"
+  period              = 300
+  statistic           = "Average"
+  threshold           = 85
+  alarm_description   = "GitLab EC2 disk utilization > 85%"
+  alarm_actions       = [aws_sns_topic.alerts.arn]
+  ok_actions          = [aws_sns_topic.alerts.arn]
+
+  dimensions = {
+    InstanceId = var.gitlab_instance_id
+    path       = "/var/opt/gitlab"
+    fstype     = "xfs"
+  }
+
+  tags = {
+    Name = "${var.project_name}-disk-alarm"
+  }
+}
+
+resource "aws_cloudwatch_metric_alarm" "memory_high" {
+  count = var.gitlab_instance_id != "" ? 1 : 0
+
+  alarm_name          = "${var.project_name}-gitlab-memory-high"
+  comparison_operator = "GreaterThanThreshold"
+  evaluation_periods  = 3
+  metric_name         = "mem_used_percent"
+  namespace           = "CWAgent"
+  period              = 300
+  statistic           = "Average"
+  threshold           = 90
+  alarm_description   = "GitLab EC2 memory > 90% for 15 minutes"
+  alarm_actions       = [aws_sns_topic.alerts.arn]
+  ok_actions          = [aws_sns_topic.alerts.arn]
+
+  dimensions = {
+    InstanceId = var.gitlab_instance_id
+  }
+
+  tags = {
+    Name = "${var.project_name}-memory-alarm"
+  }
+}
+
+resource "aws_cloudwatch_metric_alarm" "alb_unhealthy_hosts" {
+  count = var.alb_arn_suffix != "" ? 1 : 0
+
+  alarm_name          = "${var.project_name}-alb-unhealthy-hosts"
+  comparison_operator = "GreaterThanThreshold"
+  evaluation_periods  = 1
+  metric_name         = "UnHealthyHostCount"
+  namespace           = "AWS/ApplicationELB"
+  period              = 300
+  statistic           = "Average"
+  threshold           = 0
+  alarm_description   = "ALB has unhealthy targets"
+  alarm_actions       = [aws_sns_topic.alerts.arn]
+  ok_actions          = [aws_sns_topic.alerts.arn]
+
+  dimensions = {
+    LoadBalancer = var.alb_arn_suffix
+    TargetGroup  = var.target_group_arn_suffix
+  }
+
+  tags = {
+    Name = "${var.project_name}-alb-unhealthy-alarm"
+  }
+}

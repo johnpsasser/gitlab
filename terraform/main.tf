@@ -41,12 +41,14 @@ module "networking" {
 
 # --- Monitoring ---
 module "monitoring" {
-  source                 = "./modules/monitoring"
-  project_name           = var.project_name
-  gitlab_instance_id     = module.gitlab.instance_id
-  kms_key_arn            = module.kms.general_key_arn
-  cloudtrail_kms_key_arn = module.kms.cloudtrail_key_arn
-  alert_email            = var.alert_email
+  source                  = "./modules/monitoring"
+  project_name            = var.project_name
+  gitlab_instance_id      = module.gitlab.instance_id
+  kms_key_arn             = module.kms.general_key_arn
+  cloudtrail_kms_key_arn  = module.kms.cloudtrail_key_arn
+  alert_email             = var.alert_email
+  alb_arn_suffix          = module.alb.alb_arn_suffix
+  target_group_arn_suffix = module.alb.target_group_arn_suffix
 }
 
 # --- GitLab ---
