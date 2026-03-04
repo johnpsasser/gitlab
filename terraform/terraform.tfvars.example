@@ -20,3 +20,6 @@ backup_replication_region = "us-west-2"
 
 # DoD IL2 classification tag
 data_classification = "IL2"
+
+# Email for CloudWatch alarm notifications (must confirm subscription)
+# alert_email = "admin@yourcompany.com"

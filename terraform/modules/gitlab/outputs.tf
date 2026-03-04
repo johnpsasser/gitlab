@@ -1,21 +1,26 @@
 output "instance_id" {
-  value = aws_instance.gitlab.id
+  description = "ID of the GitLab EC2 instance"
+  value       = aws_instance.gitlab.id
 }
 
 output "instance_private_ip" {
-  value = aws_instance.gitlab.private_ip
+  description = "Private IP address of the GitLab EC2 instance"
+  value       = aws_instance.gitlab.private_ip
 }
 
 output "iam_role_arn" {
-  value = aws_iam_role.gitlab.arn
+  description = "ARN of the GitLab EC2 IAM role"
+  value       = aws_iam_role.gitlab.arn
 }
 
 output "backup_bucket_name" {
-  value = aws_s3_bucket.backups.id
+  description = "Name of the S3 backup bucket"
+  value       = aws_s3_bucket.backups.id
 }
 
 output "backup_bucket_arn" {
-  value = aws_s3_bucket.backups.arn
+  description = "ARN of the S3 backup bucket"
+  value       = aws_s3_bucket.backups.arn
 }
 
 output "root_password_secret_arn" {

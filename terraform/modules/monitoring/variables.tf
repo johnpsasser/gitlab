@@ -17,3 +17,9 @@ variable "cloudtrail_kms_key_arn" {
   description = "KMS key ARN for CloudTrail encryption"
   type        = string
 }
+
+variable "alert_email" {
+  description = "Email address for SNS alarm notifications (empty to skip subscription)"
+  type        = string
+  default     = ""
+}

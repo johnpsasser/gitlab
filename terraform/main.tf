@@ -46,21 +46,31 @@ module "monitoring" {
   gitlab_instance_id     = module.gitlab.instance_id
   kms_key_arn            = module.kms.general_key_arn
   cloudtrail_kms_key_arn = module.kms.cloudtrail_key_arn
+  alert_email            = var.alert_email
 }
 
 # --- GitLab ---
 module "gitlab" {
-  source                   = "./modules/gitlab"
-  project_name             = var.project_name
-  vpc_id                   = module.networking.vpc_id
-  subnet_id                = module.networking.private_subnet_ids[0]
-  security_group_id        = module.networking.gitlab_security_group_id
-  instance_type            = var.instance_type
-  data_volume_size         = var.data_volume_size
-  domain_name              = var.domain_name
-  ebs_kms_key_id           = module.kms.ebs_key_id
-  kms_key_id               = module.kms.general_key_id
-  s3_access_logs_bucket_id = module.networking.s3_access_logs_bucket_id
+  source = "./modules/gitlab"
+
+  providers = {
+    aws             = aws
+    aws.replication = aws.replication
+  }
+
+  project_name              = var.project_name
+  vpc_id                    = module.networking.vpc_id
+  subnet_id                 = module.networking.private_subnet_ids[0]
+  security_group_id         = module.networking.gitlab_security_group_id
+  instance_type             = var.instance_type
+  data_volume_size          = var.data_volume_size
+  domain_name               = var.domain_name
+  ebs_kms_key_id            = module.kms.ebs_key_id
+  kms_key_id                = module.kms.general_key_id
+  s3_access_logs_bucket_id  = module.networking.s3_access_logs_bucket_id
+  use_fips_ami              = var.use_fips_ami
+  enable_backup_replication = var.enable_backup_replication
+  backup_replication_region = var.backup_replication_region
 }
 
 # --- ALB ---

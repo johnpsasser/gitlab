@@ -19,12 +19,42 @@ resource "aws_kms_key" "general" {
     Version = "2012-10-17"
     Statement = [
       {
-        Sid    = "EnableRootAccountAccess"
+        Sid    = "EnableRootAccountKeyAdministration"
         Effect = "Allow"
         Principal = {
           AWS = "arn:aws:iam::${data.aws_caller_identity.current.account_id}:root"
         }
-        Action   = "kms:*"
+        Action = [
+          "kms:Create*",
+          "kms:Describe*",
+          "kms:Enable*",
+          "kms:List*",
+          "kms:Put*",
+          "kms:Update*",
+          "kms:Revoke*",
+          "kms:Disable*",
+          "kms:Get*",
+          "kms:Delete*",
+          "kms:TagResource",
+          "kms:UntagResource",
+          "kms:ScheduleKeyDeletion",
+          "kms:CancelKeyDeletion"
+        ]
+        Resource = "*"
+      },
+      {
+        Sid    = "AllowKeyUsage"
+        Effect = "Allow"
+        Principal = {
+          AWS = "arn:aws:iam::${data.aws_caller_identity.current.account_id}:root"
+        }
+        Action = [
+          "kms:Encrypt",
+          "kms:Decrypt",
+          "kms:ReEncrypt*",
+          "kms:GenerateDataKey*",
+          "kms:DescribeKey"
+        ]
         Resource = "*"
       }
     ]
@@ -65,12 +95,10 @@ resource "aws_kms_alias" "cloudtrail" {
 }
 
 data "aws_iam_policy_document" "cloudtrail_key" {
-  #checkov:skip=CKV_AWS_109:KMS key policy grants kms:* to account root — required for key administration per AWS best practice
-  #checkov:skip=CKV_AWS_111:KMS key policy grants kms:* to account root — required for key administration per AWS best practice
   #checkov:skip=CKV_AWS_356:KMS key policy resource "*" refers to the key itself (standard KMS key policy pattern)
-  # Allow the account root full management of the key
+  # Allow the account root key administration
   statement {
-    sid    = "EnableRootAccountAccess"
+    sid    = "EnableRootAccountKeyAdministration"
     effect = "Allow"
 
     principals {
@@ -78,7 +106,42 @@ data "aws_iam_policy_document" "cloudtrail_key" {
       identifiers = ["arn:aws:iam::${data.aws_caller_identity.current.account_id}:root"]
     }
 
-    actions   = ["kms:*"]
+    actions = [
+      "kms:Create*",
+      "kms:Describe*",
+      "kms:Enable*",
+      "kms:List*",
+      "kms:Put*",
+      "kms:Update*",
+      "kms:Revoke*",
+      "kms:Disable*",
+      "kms:Get*",
+      "kms:Delete*",
+      "kms:TagResource",
+      "kms:UntagResource",
+      "kms:ScheduleKeyDeletion",
+      "kms:CancelKeyDeletion",
+    ]
+    resources = ["*"]
+  }
+
+  # Allow the account root key usage
+  statement {
+    sid    = "AllowKeyUsage"
+    effect = "Allow"
+
+    principals {
+      type        = "AWS"
+      identifiers = ["arn:aws:iam::${data.aws_caller_identity.current.account_id}:root"]
+    }
+
+    actions = [
+      "kms:Encrypt",
+      "kms:Decrypt",
+      "kms:ReEncrypt*",
+      "kms:GenerateDataKey*",
+      "kms:DescribeKey",
+    ]
     resources = ["*"]
   }
 
@@ -137,12 +200,42 @@ resource "aws_kms_key" "ebs" {
     Version = "2012-10-17"
     Statement = [
       {
-        Sid    = "EnableRootAccountAccess"
+        Sid    = "EnableRootAccountKeyAdministration"
         Effect = "Allow"
         Principal = {
           AWS = "arn:aws:iam::${data.aws_caller_identity.current.account_id}:root"
         }
-        Action   = "kms:*"
+        Action = [
+          "kms:Create*",
+          "kms:Describe*",
+          "kms:Enable*",
+          "kms:List*",
+          "kms:Put*",
+          "kms:Update*",
+          "kms:Revoke*",
+          "kms:Disable*",
+          "kms:Get*",
+          "kms:Delete*",
+          "kms:TagResource",
+          "kms:UntagResource",
+          "kms:ScheduleKeyDeletion",
+          "kms:CancelKeyDeletion"
+        ]
+        Resource = "*"
+      },
+      {
+        Sid    = "AllowKeyUsage"
+        Effect = "Allow"
+        Principal = {
+          AWS = "arn:aws:iam::${data.aws_caller_identity.current.account_id}:root"
+        }
+        Action = [
+          "kms:Encrypt",
+          "kms:Decrypt",
+          "kms:ReEncrypt*",
+          "kms:GenerateDataKey*",
+          "kms:DescribeKey"
+        ]
         Resource = "*"
       }
     ]

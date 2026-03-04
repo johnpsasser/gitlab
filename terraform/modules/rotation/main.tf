@@ -198,7 +198,7 @@ resource "aws_lambda_permission" "secrets_manager" {
 }
 
 resource "aws_secretsmanager_secret_rotation" "root_password" {
-  #checkov:skip=CKV_AWS_304:Rotation schedule is configured at 90 days — meets IA-5(1) requirement
+  #checkov:skip=CKV_AWS_304:Rotation schedule is configured at 90 days -- meets IA-5(1) requirement
   secret_id           = var.root_password_secret_arn
   rotation_lambda_arn = aws_lambda_function.rotation.arn
 

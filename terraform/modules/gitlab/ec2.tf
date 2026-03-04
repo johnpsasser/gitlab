@@ -1,20 +1,25 @@
 data "aws_ami" "al2023" {
   most_recent = true
-  owners      = ["amazon"]
+  owners      = ["amazon"] # Amazon's verified AMI publisher account
 
   filter {
     name   = "name"
-    values = ["al2023-ami-*-x86_64"]
+    values = [var.use_fips_ami ? "al2023-ami-*-fips-*-x86_64" : "al2023-ami-*-x86_64"]
   }
 
   filter {
     name   = "virtualization-type"
     values = ["hvm"]
   }
+
+  filter {
+    name   = "state"
+    values = ["available"]
+  }
 }
 
 resource "aws_instance" "gitlab" {
-  ami                    = data.aws_ami.al2023.id
+  ami                    = var.ami_id != "" ? var.ami_id : data.aws_ami.al2023.id
   instance_type          = var.instance_type
   subnet_id              = var.subnet_id
   vpc_security_group_ids = [var.security_group_id]
@@ -34,6 +39,9 @@ resource "aws_instance" "gitlab" {
     project_name  = var.project_name
     domain_name   = var.domain_name
     backup_bucket = aws_s3_bucket.backups.id
+    cloudwatch_agent_config = templatefile("${path.module}/templates/cloudwatch-agent-config.json.tpl", {
+      project_name = var.project_name
+    })
   })
 
   metadata_options {
@@ -42,7 +50,8 @@ resource "aws_instance" "gitlab" {
   }
 
   tags = {
-    Name = "${var.project_name}-ec2"
+    Name       = "${var.project_name}-ec2"
+    PatchGroup = var.project_name
   }
 
   lifecycle {
@@ -60,6 +69,10 @@ resource "aws_ebs_volume" "data" {
 
   tags = {
     Name = "${var.project_name}-data"
+  }
+
+  lifecycle {
+    prevent_destroy = true
   }
 }
 

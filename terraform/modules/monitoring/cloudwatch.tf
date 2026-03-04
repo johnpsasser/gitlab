@@ -7,6 +7,13 @@ resource "aws_sns_topic" "alerts" {
   }
 }
 
+resource "aws_sns_topic_subscription" "email" {
+  count     = var.alert_email != "" ? 1 : 0
+  topic_arn = aws_sns_topic.alerts.arn
+  protocol  = "email"
+  endpoint  = var.alert_email
+}
+
 resource "aws_cloudwatch_metric_alarm" "cpu_high" {
   count = var.gitlab_instance_id != "" ? 1 : 0
 
@@ -52,6 +59,18 @@ resource "aws_cloudwatch_metric_alarm" "status_check" {
 
   tags = {
     Name = "${var.project_name}-status-check-alarm"
+  }
+}
+
+resource "aws_cloudwatch_log_metric_filter" "unauthorized_api_calls" {
+  name           = "${var.project_name}-unauthorized-api-calls"
+  log_group_name = aws_cloudwatch_log_group.cloudtrail.name
+  pattern        = "{ ($.errorCode = \"*UnauthorizedAccess*\") || ($.errorCode = \"AccessDenied*\") }"
+
+  metric_transformation {
+    name      = "UnauthorizedAttemptCount"
+    namespace = "CloudTrailMetrics"
+    value     = "1"
   }
 }
 

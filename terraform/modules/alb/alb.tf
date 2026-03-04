@@ -1,5 +1,5 @@
 resource "aws_lb" "gitlab" {
-  #checkov:skip=CKV2_AWS_28:WAF association managed in modules/waf/waf.tf — checkov cannot resolve cross-module references
+  #checkov:skip=CKV2_AWS_28:WAF association managed in modules/waf/waf.tf -- checkov cannot resolve cross-module references
   name                       = "${var.project_name}-alb"
   internal                   = false
   load_balancer_type         = "application"
@@ -57,5 +57,21 @@ resource "aws_lb_listener" "https" {
   default_action {
     type             = "forward"
     target_group_arn = aws_lb_target_group.gitlab.arn
+  }
+}
+
+resource "aws_lb_listener" "http_redirect" {
+  load_balancer_arn = aws_lb.gitlab.arn
+  port              = 80
+  protocol          = "HTTP"
+
+  default_action {
+    type = "redirect"
+
+    redirect {
+      port        = "443"
+      protocol    = "HTTPS"
+      status_code = "HTTP_301"
+    }
   }
 }

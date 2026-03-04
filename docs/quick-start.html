@@ -136,7 +136,7 @@
 
   <h2>2. Connect to GitLab</h2>
   <ol>
-    <li>Open your browser and navigate to: <pre><code>https://code.fedrock.com</code><button class="copy-btn" onclick="copyCode(this)">Copy</button></pre></li>
+    <li>Open your browser and navigate to: <pre><code>https://gitlab.example.com</code><button class="copy-btn" onclick="copyCode(this)">Copy</button></pre></li>
     <li>Enter your <strong>username</strong> and <strong>password</strong> provided by your administrator</li>
     <li>On first login, you'll be prompted to set up <strong>two-factor authentication</strong> (2FA)</li>
     <li>Scan the QR code with your authenticator app</li>
@@ -168,7 +168,7 @@
   </div>
 
   <h2>4. Clone Your First Repository</h2>
-  <pre><code>git clone https://code.fedrock.com/your-group/your-project.git
+  <pre><code>git clone https://gitlab.example.com/your-group/your-project.git
 # When prompted for password, use your Personal Access Token</code><button class="copy-btn" onclick="copyCode(this)">Copy</button></pre>
 
   <p>To avoid entering your token every time, configure Git credential storage:</p>
@@ -246,6 +246,39 @@ ls -la /var/log/clamav/</code><button class="copy-btn" onclick="copyCode(this)">
   --secret-string "your-initial-root-password"</code><button class="copy-btn" onclick="copyCode(this)">Copy</button></pre>
   <div class="note">
     <strong>Note:</strong> After the first automatic rotation, the password in Secrets Manager will be updated automatically. Always retrieve the current password from Secrets Manager before logging in as root.
+  </div>
+
+  <h3><span class="step-number">6</span> Admin PAT Rotation (IA-5)</h3>
+  <p>The GitLab admin PAT used by the user deactivation Lambda should be rotated periodically per organizational policy:</p>
+  <ol>
+    <li>Log into GitLab as the admin user</li>
+    <li>Navigate to <strong>User Settings &gt; Access Tokens</strong></li>
+    <li>Create a new token with <code>api</code> scope</li>
+    <li>Update the secret in Secrets Manager:
+      <pre><code>aws secretsmanager put-secret-value \
+  --secret-id gitlab/gitlab-admin-pat \
+  --secret-string "glpat-NEW-TOKEN-VALUE"</code></pre>
+    </li>
+    <li>Revoke the old token in GitLab</li>
+    <li>Test the Lambda to verify the new token works:
+      <pre><code>aws lambda invoke --function-name gitlab-user-deactivation /dev/stdout</code></pre>
+    </li>
+  </ol>
+
+  <h3><span class="step-number">7</span> gitlab-secrets.json Backup and Rotation</h3>
+  <p>The <code>gitlab-secrets.json</code> file contains Rails secret keys and internal encryption keys. It is backed up to Secrets Manager but rotation requires careful coordination:</p>
+  <ol>
+    <li>Back up current secrets:
+      <pre><code># Via SSM session
+aws secretsmanager put-secret-value \
+  --secret-id gitlab/secrets-json \
+  --secret-string "$(sudo cat /etc/gitlab/gitlab-secrets.json)"</code></pre>
+    </li>
+    <li><strong>Note:</strong> Rotating the Rails secret_key_base invalidates all existing user sessions and encrypted tokens. Plan for user re-authentication.</li>
+    <li>After any rotation, run <code>gitlab-ctl reconfigure</code> and verify GitLab functionality.</li>
+  </ol>
+  <div class="note">
+    <strong>Important:</strong> gitlab-secrets.json rotation is a manual procedure due to its impact on user sessions and encrypted data. Automate only after thorough testing in a non-production environment.
   </div>
 
   <footer>

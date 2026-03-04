@@ -282,11 +282,8 @@ The entire infrastructure is defined as code. Rebuild with a clean state:
 ```bash
 cd terraform/
 
-# Taint the compromised EC2 instance to force replacement
-terraform taint module.gitlab.aws_instance.gitlab
-
-# Plan and review the rebuild
-terraform plan -out=recovery.tfplan
+# Force replacement of the compromised EC2 instance
+terraform plan -replace=module.gitlab.aws_instance.gitlab -out=recovery.tfplan
 
 # Apply the recovery plan
 terraform apply recovery.tfplan

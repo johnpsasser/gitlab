@@ -8,7 +8,7 @@ Terraform infrastructure for deploying a self-hosted GitLab instance on AWS with
 
 GitLab runs on a single EC2 instance inside private subnets. Developers connect over HTTPS to an internet-facing Application Load Balancer, which is protected by AWS WAF (OWASP common rules, known bad inputs, and rate limiting). The ALB terminates TLS 1.3 and re-encrypts traffic to the GitLab instance over HTTPS (port 443) using a self-signed certificate. Outbound internet access (for package updates) is routed through a NAT Gateway in the public subnets. Admin access to the instance is via SSM Session Manager only.
 
-AWS service access from the private subnets is handled via VPC endpoints (S3, SSM, Secrets Manager, CloudWatch Logs), minimizing traffic that traverses the NAT Gateway. All data is encrypted at rest using Customer Managed KMS Keys, and all S3 buckets have public access blocked with lifecycle policies that transition objects to Glacier. All resources are tagged with the DoD IL2 `DataClassification` tag.
+AWS service access from the private subnets is handled via 7 VPC endpoints (S3, SSM, SSM Messages, EC2 Messages, Secrets Manager, CloudWatch Logs, KMS), minimizing traffic that traverses the NAT Gateway. All data is encrypted at rest using Customer Managed KMS Keys, and all S3 buckets have public access blocked with lifecycle policies that transition objects to Glacier. All resources are tagged with the DoD IL2 `DataClassification` tag.
 
 Continuous monitoring is provided by multi-region CloudTrail (CMK-encrypted with CloudWatch Logs integration), GuardDuty (with EBS malware protection), Security Hub (NIST 800-53 v5 and AWS best practices), AWS Config, Amazon Inspector (EC2 CVE scanning), and CloudWatch alarms with SNS alerting. ClamAV provides on-host antimalware scanning with daily signature updates. Automated Lambda functions handle inactive account deactivation (90-day threshold), Secrets Manager root password rotation (90-day cycle), and CISA KEV advisory monitoring.
 
@@ -31,8 +31,9 @@ VPC, subnets, route tables, NAT Gateway, security groups, VPC endpoints, flow lo
 - NAT Gateway (single AZ) with Elastic IP for outbound from private subnets
 - Internet Gateway for the public subnets
 - Security groups for the ALB, GitLab EC2, and VPC endpoints
-- VPC interface endpoints: SSM, SSM Messages, EC2 Messages, Secrets Manager, CloudWatch Logs
+- VPC interface endpoints: SSM, SSM Messages, EC2 Messages, Secrets Manager, CloudWatch Logs, KMS
 - S3 gateway endpoint via route table
+- Total: 7 VPC endpoints (6 interface + 1 gateway)
 - VPC flow logs to S3 (CMK-encrypted, 60-second aggregation)
 - S3 access logs target bucket for ALB access logs
 

@@ -69,8 +69,8 @@ resource "aws_iam_role_policy" "s3_backup" {
           "s3:ListBucket"
         ]
         Resource = [
-          "arn:aws:s3:::${var.project_name}-backups-*",
-          "arn:aws:s3:::${var.project_name}-backups-*/*"
+          aws_s3_bucket.backups.arn,
+          "${aws_s3_bucket.backups.arn}/*"
         ]
       }
     ]

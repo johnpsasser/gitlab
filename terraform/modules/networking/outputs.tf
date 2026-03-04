@@ -1,33 +1,41 @@
 output "vpc_id" {
-  value = aws_vpc.main.id
+  description = "ID of the VPC"
+  value       = aws_vpc.main.id
 }
 
 output "vpc_cidr" {
-  value = aws_vpc.main.cidr_block
+  description = "CIDR block of the VPC"
+  value       = aws_vpc.main.cidr_block
 }
 
 output "public_subnet_ids" {
-  value = aws_subnet.public[*].id
+  description = "List of public subnet IDs"
+  value       = aws_subnet.public[*].id
 }
 
 output "private_subnet_ids" {
-  value = aws_subnet.private[*].id
+  description = "List of private subnet IDs"
+  value       = aws_subnet.private[*].id
 }
 
 output "nat_gateway_id" {
-  value = aws_nat_gateway.main.id
+  description = "ID of the NAT gateway"
+  value       = aws_nat_gateway.main.id
 }
 
 output "alb_security_group_id" {
-  value = aws_security_group.alb.id
+  description = "Security group ID for the ALB"
+  value       = aws_security_group.alb.id
 }
 
 output "gitlab_security_group_id" {
-  value = aws_security_group.gitlab.id
+  description = "Security group ID for the GitLab instance"
+  value       = aws_security_group.gitlab.id
 }
 
 output "s3_access_logs_bucket_id" {
-  value = aws_s3_bucket.access_logs.id
+  description = "ID of the S3 access logs bucket"
+  value       = aws_s3_bucket.access_logs.id
 }
 
 output "vpc_endpoints_security_group_id" {

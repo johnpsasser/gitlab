@@ -1,7 +1,7 @@
 data "aws_caller_identity" "current" {}
 
 resource "aws_cloudtrail" "main" {
-  #checkov:skip=CKV_AWS_252:CloudTrail SNS topic not needed — alarms handled via CloudWatch
+  #checkov:skip=CKV_AWS_252:CloudTrail SNS topic not needed -- alarms handled via CloudWatch
   name                          = "${var.project_name}-trail"
   s3_bucket_name                = aws_s3_bucket.cloudtrail.id
   is_multi_region_trail         = true
@@ -71,7 +71,7 @@ resource "aws_iam_role_policy" "cloudtrail_cloudwatch" {
 resource "aws_s3_bucket" "cloudtrail" {
   #checkov:skip=CKV2_AWS_62:S3 event notifications not required for CloudTrail log bucket
   #checkov:skip=CKV_AWS_18:Access logging on log buckets creates circular dependency
-  #checkov:skip=CKV_AWS_144:Cross-region replication not needed — CloudTrail logs have file validation enabled
+  #checkov:skip=CKV_AWS_144:Cross-region replication not needed -- CloudTrail logs have file validation enabled
   bucket_prefix = "${var.project_name}-cloudtrail-"
 
   tags = {
@@ -147,6 +147,11 @@ resource "aws_s3_bucket_policy" "cloudtrail" {
         }
         Action   = "s3:GetBucketAcl"
         Resource = aws_s3_bucket.cloudtrail.arn
+        Condition = {
+          StringEquals = {
+            "aws:SourceAccount" = data.aws_caller_identity.current.account_id
+          }
+        }
       },
       {
         Sid    = "AWSCloudTrailWrite"
@@ -158,7 +163,23 @@ resource "aws_s3_bucket_policy" "cloudtrail" {
         Resource = "${aws_s3_bucket.cloudtrail.arn}/AWSLogs/${data.aws_caller_identity.current.account_id}/*"
         Condition = {
           StringEquals = {
-            "s3:x-amz-acl" = "bucket-owner-full-control"
+            "s3:x-amz-acl"      = "bucket-owner-full-control"
+            "aws:SourceAccount" = data.aws_caller_identity.current.account_id
+          }
+        }
+      },
+      {
+        Sid       = "DenyInsecureTransport"
+        Effect    = "Deny"
+        Principal = "*"
+        Action    = "s3:*"
+        Resource = [
+          aws_s3_bucket.cloudtrail.arn,
+          "${aws_s3_bucket.cloudtrail.arn}/*"
+        ]
+        Condition = {
+          Bool = {
+            "aws:SecureTransport" = "false"
           }
         }
       }

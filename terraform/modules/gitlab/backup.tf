@@ -6,6 +6,10 @@ resource "aws_s3_bucket" "backups" {
   tags = {
     Name = "${var.project_name}-backups"
   }
+
+  lifecycle {
+    prevent_destroy = true
+  }
 }
 
 resource "aws_s3_bucket_logging" "backups" {
@@ -66,4 +70,146 @@ resource "aws_s3_bucket_lifecycle_configuration" "backups" {
       days_after_initiation = 7
     }
   }
+}
+
+resource "aws_s3_bucket_policy" "backups" {
+  bucket = aws_s3_bucket.backups.id
+
+  policy = jsonencode({
+    Version = "2012-10-17"
+    Statement = [
+      {
+        Sid       = "DenyInsecureTransport"
+        Effect    = "Deny"
+        Principal = "*"
+        Action    = "s3:*"
+        Resource = [
+          aws_s3_bucket.backups.arn,
+          "${aws_s3_bucket.backups.arn}/*"
+        ]
+        Condition = {
+          Bool = {
+            "aws:SecureTransport" = "false"
+          }
+        }
+      }
+    ]
+  })
+}
+
+# Cross-region replication IAM role (CP-6)
+resource "aws_iam_role" "replication" {
+  count = var.enable_backup_replication ? 1 : 0
+  name  = "${var.project_name}-s3-replication-role"
+
+  assume_role_policy = jsonencode({
+    Version = "2012-10-17"
+    Statement = [{
+      Action    = "sts:AssumeRole"
+      Effect    = "Allow"
+      Principal = { Service = "s3.amazonaws.com" }
+    }]
+  })
+}
+
+resource "aws_iam_role_policy" "replication" {
+  count = var.enable_backup_replication ? 1 : 0
+  name  = "${var.project_name}-s3-replication-policy"
+  role  = aws_iam_role.replication[0].id
+
+  policy = jsonencode({
+    Version = "2012-10-17"
+    Statement = [
+      {
+        Effect = "Allow"
+        Action = [
+          "s3:GetReplicationConfiguration",
+          "s3:ListBucket"
+        ]
+        Resource = aws_s3_bucket.backups.arn
+      },
+      {
+        Effect = "Allow"
+        Action = [
+          "s3:GetObjectVersionForReplication",
+          "s3:GetObjectVersionAcl",
+          "s3:GetObjectVersionTagging"
+        ]
+        Resource = "${aws_s3_bucket.backups.arn}/*"
+      },
+      {
+        Effect = "Allow"
+        Action = [
+          "s3:ReplicateObject",
+          "s3:ReplicateDelete",
+          "s3:ReplicateTags"
+        ]
+        Resource = "${aws_s3_bucket.backup_replica[0].arn}/*"
+      }
+    ]
+  })
+}
+
+# Replica bucket (in replication region)
+resource "aws_s3_bucket" "backup_replica" {
+  count    = var.enable_backup_replication ? 1 : 0
+  provider = aws.replication
+
+  bucket_prefix = "${var.project_name}-backups-replica-"
+
+  tags = {
+    Name = "${var.project_name}-backups-replica"
+  }
+}
+
+resource "aws_s3_bucket_versioning" "backup_replica" {
+  count    = var.enable_backup_replication ? 1 : 0
+  provider = aws.replication
+  bucket   = aws_s3_bucket.backup_replica[0].id
+
+  versioning_configuration {
+    status = "Enabled"
+  }
+}
+
+resource "aws_s3_bucket_server_side_encryption_configuration" "backup_replica" {
+  count    = var.enable_backup_replication ? 1 : 0
+  provider = aws.replication
+  bucket   = aws_s3_bucket.backup_replica[0].id
+
+  rule {
+    apply_server_side_encryption_by_default {
+      sse_algorithm = "aws:kms"
+    }
+  }
+}
+
+resource "aws_s3_bucket_public_access_block" "backup_replica" {
+  count    = var.enable_backup_replication ? 1 : 0
+  provider = aws.replication
+  bucket   = aws_s3_bucket.backup_replica[0].id
+
+  block_public_acls       = true
+  block_public_policy     = true
+  ignore_public_acls      = true
+  restrict_public_buckets = true
+}
+
+# Replication configuration on the source bucket
+resource "aws_s3_bucket_replication_configuration" "backups" {
+  count  = var.enable_backup_replication ? 1 : 0
+  bucket = aws_s3_bucket.backups.id
+  role   = aws_iam_role.replication[0].arn
+
+  rule {
+    id     = "backup-replication"
+    status = "Enabled"
+
+    destination {
+      bucket        = aws_s3_bucket.backup_replica[0].arn
+      storage_class = "STANDARD_IA"
+    }
+  }
+
+  depends_on = [aws_s3_bucket_versioning.backups]
 }

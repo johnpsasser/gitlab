@@ -40,13 +40,31 @@ variable "kms_key_id" {
   type        = string
 }
 
-variable "backup_bucket_arn" {
-  description = "ARN of the S3 backup bucket"
-  type        = string
-  default     = "" # Set after backup module creates the bucket
-}
-
 variable "s3_access_logs_bucket_id" {
   description = "S3 bucket ID for access logging"
   type        = string
+}
+
+variable "use_fips_ami" {
+  description = "Use FIPS-validated Amazon Linux 2023 AMI for IL2 compliance"
+  type        = bool
+  default     = false
+}
+
+variable "ami_id" {
+  description = "Optional override AMI ID (e.g., for pinned FIPS AMI). If set, overrides the AMI data source."
+  type        = string
+  default     = ""
+}
+
+variable "backup_replication_region" {
+  description = "AWS region for backup cross-region replication"
+  type        = string
+  default     = ""
+}
+
+variable "enable_backup_replication" {
+  description = "Enable cross-region S3 replication for backups"
+  type        = bool
+  default     = false
 }

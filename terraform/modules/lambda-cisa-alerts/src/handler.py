@@ -31,24 +31,22 @@ def fetch_kev_catalog():
         return json.loads(resp.read().decode())
 
 
-def get_last_state(table):
-    """Retrieve the last known KEV state from DynamoDB."""
+def get_known_cve_ids(table):
+    """Retrieve all known CVE IDs from DynamoDB."""
     response = table.get_item(Key={"id": STATE_KEY})
     item = response.get("Item")
     if item:
-        return {
-            "count": int(item.get("vulnerability_count", 0)),
-            "latest_cve": item.get("latest_cve", ""),
-            "last_checked": item.get("last_checked", ""),
-        }
+        known_ids = item.get("known_cve_ids", "[]")
+        return set(json.loads(known_ids))
     return None
 
 
-def save_state(table, count, latest_cve):
+def save_state(table, known_cve_ids, latest_cve):
     """Save current KEV state to DynamoDB."""
     table.put_item(Item={
         "id": STATE_KEY,
-        "vulnerability_count": count,
+        "vulnerability_count": len(known_cve_ids),
+        "known_cve_ids": json.dumps(sorted(known_cve_ids)),
         "latest_cve": latest_cve,
         "last_checked": datetime.now(timezone.utc).isoformat(),
     })
@@ -76,11 +74,12 @@ def lambda_handler(event, context):
     logger.info("KEV catalog: %d vulnerabilities, version=%s, released=%s, latest=%s",
                 current_count, catalog_version, date_released, latest_cve)
 
-    last_state = get_last_state(table)
+    all_cve_ids = {v["cveID"] for v in vulnerabilities}
+    known_ids = get_known_cve_ids(table)
 
-    if last_state is None:
+    if known_ids is None:
         # First run -- save baseline state
-        save_state(table, current_count, latest_cve)
+        save_state(table, all_cve_ids, latest_cve)
         logger.info("First run: saved baseline state (%d vulnerabilities)", current_count)
 
         sns_client.publish(
@@ -93,17 +92,16 @@ def lambda_handler(event, context):
                 f"Latest CVE: {latest_cve}\n"
             ),
         )
-        return {"status": "baseline_established", "count": current_count}
+        return {"status": "baseline_established", "count": len(all_cve_ids)}
 
-    new_count = current_count - last_state["count"]
+    new_cve_ids = all_cve_ids - known_ids
 
-    if new_count > 0:
-        # Find the new entries (entries added since last check)
-        new_entries = vulnerabilities[:new_count]
+    if new_cve_ids:
+        new_entries = [v for v in vulnerabilities if v["cveID"] in new_cve_ids]
 
-        subject = f"CISA KEV Alert: {new_count} new vulnerabilities added"
+        subject = f"CISA KEV Alert: {len(new_cve_ids)} new vulnerabilities added"
         message = (
-            f"{new_count} new vulnerabilities added to the CISA KEV catalog.\n\n"
+            f"{len(new_cve_ids)} new vulnerabilities added to the CISA KEV catalog.\n\n"
             f"Catalog version: {catalog_version}\n"
             f"Total vulnerabilities: {current_count}\n\n"
             f"New entries:\n"
@@ -124,21 +122,17 @@ def lambda_handler(event, context):
             Subject=subject[:100],
             Message=message,
         )
-        logger.info("SNS notification sent: %d new KEV entries", new_count)
-
-    elif new_count < 0:
-        logger.warning("KEV count decreased from %d to %d (catalog may have been revised)",
-                        last_state["count"], current_count)
+        logger.info("SNS notification sent: %d new KEV entries", len(new_cve_ids))
 
     else:
         logger.info("No new KEV entries since last check")
 
-    # Update state
-    save_state(table, current_count, latest_cve)
+    # Update state with all known IDs
+    save_state(table, all_cve_ids, latest_cve)
 
     return {
         "status": "checked",
-        "previous_count": last_state["count"],
-        "current_count": current_count,
-        "new_entries": max(new_count, 0),
+        "previous_count": len(known_ids),
+        "current_count": len(all_cve_ids),
+        "new_entries": len(new_cve_ids) if new_cve_ids else 0,
     }

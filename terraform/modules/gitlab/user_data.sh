@@ -57,7 +57,7 @@ dnf install -y gitlab-ce
 
 # Generate self-signed certificate for internal ALB-to-EC2 TLS (SC-8)
 mkdir -p /etc/gitlab/ssl
-openssl req -new -newkey rsa:2048 -days 3650 -nodes -x509 \
+openssl req -new -newkey rsa:4096 -days 3650 -nodes -x509 \
   -subj "/C=US/ST=Virginia/L=Arlington/O=$PROJECT/CN=$DOMAIN" \
   -keyout "/etc/gitlab/ssl/$DOMAIN.key" \
   -out "/etc/gitlab/ssl/$DOMAIN.crt"
@@ -77,7 +77,7 @@ gitlab_rails['gitlab_signup_enabled'] = false
 gitlab_rails['password_authentication_enabled_for_web'] = true  # GitLab native authentication for IL2 compliance
 gitlab_rails['password_minimum_length'] = 15
 gitlab_rails['require_two_factor_authentication'] = true         # IA-2(1): MFA for all users
-gitlab_rails['two_factor_authentication_grace_period'] = 0       # No grace period — enforce immediately
+gitlab_rails['two_factor_authentication_grace_period'] = 0       # No grace period -- enforce immediately
 gitlab_rails['gravatar_enabled'] = false
 gitlab_rails['default_projects_features_visibility_level'] = 'private'
 gitlab_rails['default_project_visibility'] = 'private'
@@ -135,23 +135,9 @@ CRON
 
 # Install CloudWatch agent for disk monitoring
 dnf install -y amazon-cloudwatch-agent
-cat > /opt/aws/amazon-cloudwatch-agent/etc/config.json << 'CWAGENT'
-{
-  "metrics": {
-    "metrics_collected": {
-      "disk": {
-        "measurement": ["used_percent"],
-        "resources": ["/", "/var/opt/gitlab"],
-        "metrics_collection_interval": 300
-      },
-      "mem": {
-        "measurement": ["mem_used_percent"],
-        "metrics_collection_interval": 300
-      }
-    }
-  }
-}
-CWAGENT
+cat > /opt/aws/amazon-cloudwatch-agent/etc/config.json << 'CWAGENTCONFIG'
+${cloudwatch_agent_config}
+CWAGENTCONFIG
 systemctl enable --now amazon-cloudwatch-agent
 
 # === ClamAV Antimalware (SI-3) ===
@@ -229,5 +215,47 @@ CWCLAMAV
   -m ec2 \
   -s \
   -c file:/opt/aws/amazon-cloudwatch-agent/etc/clamav-logs.json
+
+# === AIDE File Integrity Monitoring (SI-7) ===
+echo "=== Installing AIDE ==="
+dnf install -y aide
+
+# Initialize AIDE database
+aide --init
+mv /var/lib/aide/aide.db.new.gz /var/lib/aide/aide.db.gz
+
+# Daily AIDE check cron job
+cat > /etc/cron.d/aide-check << 'AIDECRON'
+0 4 * * * root /usr/sbin/aide --check >> /var/log/aide/aide-check.log 2>&1
+AIDECRON
+
+# Create log directory
+mkdir -p /var/log/aide
+
+# Add AIDE logs to CloudWatch Agent
+cat > /opt/aws/amazon-cloudwatch-agent/etc/aide-logs.json << 'CWAIDE'
+{
+  "logs": {
+    "logs_collected": {
+      "files": {
+        "collect_list": [
+          {
+            "file_path": "/var/log/aide/aide-check.log",
+            "log_group_name": "/${project_name}/aide/check",
+            "log_stream_name": "{instance_id}",
+            "timezone": "UTC"
+          }
+        ]
+      }
+    }
+  }
+}
+CWAIDE
+
+/opt/aws/amazon-cloudwatch-agent/bin/amazon-cloudwatch-agent-ctl \
+  -a append-config \
+  -m ec2 \
+  -s \
+  -c file:/opt/aws/amazon-cloudwatch-agent/etc/aide-logs.json
 
 echo "=== GitLab CE Bootstrap Complete ==="

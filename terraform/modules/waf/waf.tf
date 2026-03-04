@@ -72,6 +72,28 @@ resource "aws_wafv2_web_acl" "gitlab" {
     }
   }
 
+  rule {
+    name     = "aws-ip-reputation"
+    priority = 4
+
+    override_action {
+      none {}
+    }
+
+    statement {
+      managed_rule_group_statement {
+        vendor_name = "AWS"
+        name        = "AWSManagedRulesAmazonIpReputationList"
+      }
+    }
+
+    visibility_config {
+      sampled_requests_enabled   = true
+      cloudwatch_metrics_enabled = true
+      metric_name                = "${var.project_name}-ip-reputation"
+    }
+  }
+
   visibility_config {
     sampled_requests_enabled   = true
     cloudwatch_metrics_enabled = true

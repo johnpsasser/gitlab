@@ -138,7 +138,7 @@ Internet
                           |
                      [TLS 1.3 termination]
                           |
-                     [HTTP/80 forwarding]
+                     [HTTPS/443 re-encryption]
                           |
                      [EC2 GitLab CE (Private Subnet)]
                           |
@@ -180,7 +180,7 @@ kms --> networking --> gitlab
 | Module | Path | Responsibility |
 |---|---|---|
 | **kms** | `modules/kms/` | 3 Customer Managed Keys: general (S3, Secrets Manager, CloudWatch, DynamoDB), CloudTrail-specific, EBS-specific. All keys have automatic annual rotation. |
-| **networking** | `modules/networking/` | VPC, 2 public + 2 private subnets across 2 AZs, NAT Gateway, security groups, 6 VPC endpoints, VPC flow logs (60s aggregation), S3 access log bucket. |
+| **networking** | `modules/networking/` | VPC, 2 public + 2 private subnets across 2 AZs, NAT Gateway, security groups, 7 VPC endpoints (S3 gateway + SSM, SSM Messages, EC2 Messages, Secrets Manager, CloudWatch Logs, KMS interfaces), VPC flow logs (60s aggregation), S3 access log bucket. |
 | **gitlab** | `modules/gitlab/` | EC2 instance (Amazon Linux 2023), EBS root + data volumes (CMK-encrypted), IAM instance profile with least-privilege policies, S3 backup bucket (versioned, CMK-encrypted, lifecycle policies), Secrets Manager secrets, `user_data.sh` bootstrap script. |
 | **alb** | `modules/alb/` | Internet-facing ALB, HTTPS listener with TLS 1.3 (`ELBSecurityPolicy-TLS13-1-2-2021-06`), ACM certificate (email validation), health checks on `/-/health`, access logging to S3. |
 | **waf** | `modules/waf/` | WAFv2 WebACL with AWSManagedRulesCommonRuleSet (OWASP Top 10), AWSManagedRulesKnownBadInputsRuleSet, rate limiting (2000 req/5 min/IP), WAF logging to CloudWatch Logs. |
@@ -261,7 +261,7 @@ The full control-by-control implementation mapping is maintained in the companio
 | **CM** -- Configuration Management | 4 | 4 | 0 | 0 | Terraform IaC, Checkov policy enforcement, AWS Config drift detection, TLS 1.3, IMDSv2 |
 | **CP** -- Contingency Planning | 3 | 2 | 1 | 0 | Daily S3 backups (CMK-encrypted), Secrets Manager backup, Terraform-based recovery, cross-region replication |
 | **IA** -- Identification and Authentication | 5 | 4 | 1 | 0 | MFA (zero grace period), 15-char passwords, Secrets Manager, PAT auth, automated root password rotation (Lambda) |
-| **IR** -- Incident Response | 3 | 1 | 1 | 1 | CloudWatch alarms, GuardDuty, Security Hub; gap: formal IRP |
+| **IR** -- Incident Response | 3 | 3 | 0 | 0 | CloudWatch alarms, GuardDuty, Security Hub, formal IRP (docs/incident-response-plan.md) |
 | **MP** -- Media Protection | 1 | 0 | 1 | 0 | `DataClassification=IL2` resource tagging; gap: FISMA System ID tags |
 | **RA** -- Risk Assessment | 1 | 1 | 0 | 0 | Amazon Inspector (EC2 CVE scanning), Security Hub, GuardDuty, Checkov |
 | **SC** -- System and Comms Protection | 6 | 6 | 0 | 0 | WAF rate limiting, private subnets, TLS 1.3, CMK encryption, VPC endpoints, FIPS AMI |
@@ -269,9 +269,9 @@ The full control-by-control implementation mapping is maintained in the companio
 
 ### Overall Posture
 
-- **Controls Implemented**: 31 of 41 addressed controls fully implemented
-- **Partially Implemented**: 7 controls with identified enhancement paths
-- **Gaps**: 3 controls requiring procedural/documentation action (IR-6, formal IRP, FISMA tags)
+- **Controls Implemented**: 33 of 41 addressed controls fully implemented
+- **Partially Implemented**: 6 controls with identified enhancement paths
+- **Gaps**: 2 controls requiring procedural/documentation action (AC gaps, FISMA tags)
 
 ---
 
@@ -325,12 +325,8 @@ This section cross-references the NIST 800-53 Rev 5 Moderate baseline controls w
 |---|---|---|---|---|
 | AU-6 | Audit Review, Analysis, Reporting | No centralized SIEM for automated log correlation | Deploy Amazon OpenSearch or integrate with SIEM (Splunk, Elastic) | High |
 | CP-6 | Alternate Storage Site | Cross-region replication configured but not verified | Validate replication resources are deployed and tested | Medium |
-| IR-1 | Incident Response Policy | No formal incident response policy documented | Draft IRP with roles, escalation, communication, forensics | High |
-| IR-6 | Incident Reporting | No formal incident reporting procedures | Document reporting procedures and contact lists | High |
-| IR-8 | Incident Response Plan | No formal IRP | Draft and conduct tabletop exercise | High |
 | MP-3 | Media Marking | No FISMA System ID or System Owner tags | Add FISMA tags to `default_tags` in Terraform provider | Low |
 | AT-2 | Security Awareness Training | No formal training program | Establish annual training with documented completion records | Medium |
-| SC-8(1) | Transmission Confidentiality (end-to-end) | ALB-to-EC2 HTTP within private subnet | Configure GitLab nginx HTTPS; update ALB target group | Medium |
 
 ---
 

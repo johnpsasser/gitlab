@@ -50,8 +50,8 @@ This GitLab instance runs on a single EC2 instance in a private subnet with no p
 | AU-3 Content of Audit Records | Implemented | CloudTrail records include who, what, when, where, and outcome for every API call. Log file validation enabled (`enable_log_file_validation = true`). |
 | AU-6 Audit Review/Analysis | Partially Implemented | Logs collected and stored. CloudWatch alarms alert on instance health and unauthorized API calls (`modules/monitoring/cloudwatch.tf`). SNS topic delivers alarm notifications (`aws_sns_topic.alerts`). Security Hub provides aggregated security findings. **Gap**: No centralized SIEM for automated log correlation. |
 | AU-9 Protection of Audit Info | Implemented | All log buckets have public access blocked, S3 versioning enabled, and CMK encryption (`modules/monitoring/cloudtrail.tf`, `modules/networking/flow_logs.tf`). CloudTrail encrypted with dedicated CMK (`modules/kms/main.tf`, `cloudtrail` key). CloudTrail log file validation prevents tampering. |
-| AU-12 Audit Record Generation | Implemented | CloudTrail multi-region trail, VPC flow logs (60s aggregation), ALB access logs, WAF logs, and S3 access logs all generate automatically. AWS Config records all resource configuration changes (`modules/security/config.tf`). |
 | AU-11 Audit Record Retention | Implemented | All log buckets transition to Glacier at 30-90 days and expire at 365 days. CloudWatch log groups retain for 365 days. CloudTrail: 90d to Glacier, 365d expiry. Flow Logs and ALB Logs: 30d to Glacier, 365d expiry. |
+| AU-12 Audit Record Generation | Implemented | CloudTrail multi-region trail, VPC flow logs (60s aggregation), ALB access logs, WAF logs, and S3 access logs all generate automatically. AWS Config records all resource configuration changes (`modules/security/config.tf`). |
 
 ### CA -- Security Assessment and Authorization
 
@@ -125,6 +125,7 @@ This GitLab instance runs on a single EC2 instance in a private subnet with no p
 | SI-3 Malicious Code Protection | Implemented | ClamAV antimalware installed on EC2 via `user_data.sh` with daily signature updates (`freshclam`) and daily scans of GitLab data directories (`/var/opt/gitlab/git-data/`, `/var/opt/gitlab/uploads/`). Scan logs shipped to CloudWatch Logs for alerting. GuardDuty Malware Protection enabled for automated EBS malware scanning on threat detection (`modules/security/guardduty.tf`). |
 | SI-4 System Monitoring | Implemented | CloudWatch detailed monitoring enabled on EC2. CPU, status check, and unauthorized API call alarms with SNS notification (`modules/monitoring/cloudwatch.tf`). CloudTrail monitors API activity with CloudWatch Logs integration. VPC Flow Logs monitor network traffic at 60-second intervals. WAF logs capture all evaluated requests. GuardDuty provides automated threat detection. Security Hub provides centralized findings dashboard. AWS Config monitors configuration compliance. |
 | SI-5 Security Alerts | Implemented | CloudWatch alarms deliver via SNS topic. Security Hub aggregates findings. Daily Lambda (`modules/lambda-cisa-alerts/`) polls the CISA Known Exploited Vulnerabilities (KEV) catalog and sends SNS notifications for new entries. Amazon Inspector also integrates CISA KEV data into its vulnerability findings. |
+| SI-7 Software/Info Integrity | Implemented | AIDE file integrity monitoring installed on EC2 via `user_data.sh`. Daily integrity checks with results logged to CloudWatch Logs. Detects unauthorized changes to system files and GitLab binaries. |
 
 ---
 
