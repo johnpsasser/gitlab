@@ -79,6 +79,7 @@ module "waf" {
   source       = "./modules/waf"
   project_name = var.project_name
   alb_arn      = module.alb.alb_arn
+  kms_key_arn  = module.kms.general_key_arn
 }
 
 # --- Security (IL2 Continuous Monitoring) ---

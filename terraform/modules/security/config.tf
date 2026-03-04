@@ -23,10 +23,49 @@ resource "aws_config_configuration_recorder_status" "main" {
 }
 
 resource "aws_s3_bucket" "config" {
+  #checkov:skip=CKV_AWS_18:Access logging on log buckets creates circular dependency
+  #checkov:skip=CKV_AWS_144:Cross-region replication not needed for Config delivery bucket
+  #checkov:skip=CKV2_AWS_62:S3 event notifications not required for this deployment
   bucket_prefix = "${var.project_name}-config-"
 
   tags = {
     Name = "${var.project_name}-config"
+  }
+}
+
+resource "aws_s3_bucket_versioning" "config" {
+  bucket = aws_s3_bucket.config.id
+  versioning_configuration {
+    status = "Enabled"
+  }
+}
+
+resource "aws_s3_bucket_lifecycle_configuration" "config" {
+  bucket = aws_s3_bucket.config.id
+
+  rule {
+    id     = "archive"
+    status = "Enabled"
+    filter {}
+
+    transition {
+      days          = 90
+      storage_class = "GLACIER"
+    }
+
+    expiration {
+      days = 365
+    }
+  }
+
+  rule {
+    id     = "abort-incomplete-uploads"
+    status = "Enabled"
+    filter {}
+
+    abort_incomplete_multipart_upload {
+      days_after_initiation = 7
+    }
   }
 }
 

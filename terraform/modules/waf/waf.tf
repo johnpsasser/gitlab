@@ -91,6 +91,7 @@ resource "aws_wafv2_web_acl_association" "gitlab" {
 resource "aws_cloudwatch_log_group" "waf" {
   name              = "aws-waf-logs-${var.project_name}"
   retention_in_days = 365
+  kms_key_id        = var.kms_key_arn
 
   tags = {
     Name = "${var.project_name}-waf-logs"

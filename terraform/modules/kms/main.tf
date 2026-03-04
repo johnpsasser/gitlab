@@ -15,6 +15,21 @@ resource "aws_kms_key" "general" {
   enable_key_rotation     = true
   deletion_window_in_days = 30
 
+  policy = jsonencode({
+    Version = "2012-10-17"
+    Statement = [
+      {
+        Sid    = "EnableRootAccountAccess"
+        Effect = "Allow"
+        Principal = {
+          AWS = "arn:aws:iam::${data.aws_caller_identity.current.account_id}:root"
+        }
+        Action   = "kms:*"
+        Resource = "*"
+      }
+    ]
+  })
+
   tags = {
     Name    = "${var.project_name}-general"
     Purpose = "General encryption (S3, Secrets Manager, etc.)"
@@ -50,6 +65,9 @@ resource "aws_kms_alias" "cloudtrail" {
 }
 
 data "aws_iam_policy_document" "cloudtrail_key" {
+  #checkov:skip=CKV_AWS_109:KMS key policy grants kms:* to account root — required for key administration per AWS best practice
+  #checkov:skip=CKV_AWS_111:KMS key policy grants kms:* to account root — required for key administration per AWS best practice
+  #checkov:skip=CKV_AWS_356:KMS key policy resource "*" refers to the key itself (standard KMS key policy pattern)
   # Allow the account root full management of the key
   statement {
     sid    = "EnableRootAccountAccess"
@@ -114,6 +132,21 @@ resource "aws_kms_key" "ebs" {
   description             = "${var.project_name} EBS volume encryption key"
   enable_key_rotation     = true
   deletion_window_in_days = 30
+
+  policy = jsonencode({
+    Version = "2012-10-17"
+    Statement = [
+      {
+        Sid    = "EnableRootAccountAccess"
+        Effect = "Allow"
+        Principal = {
+          AWS = "arn:aws:iam::${data.aws_caller_identity.current.account_id}:root"
+        }
+        Action   = "kms:*"
+        Resource = "*"
+      }
+    ]
+  })
 
   tags = {
     Name    = "${var.project_name}-ebs"

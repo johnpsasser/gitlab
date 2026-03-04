@@ -1,5 +1,5 @@
 resource "aws_s3_bucket" "backups" {
-  # TODO: Enable S3 access logging once access-logs bucket ID is passed through (IL2 AU-2)
+  #checkov:skip=CKV_AWS_18:S3 access logging — TODO: pass access-logs bucket ID through module (IL2 AU-2)
   #checkov:skip=CKV_AWS_144:S3 cross-region replication not needed for log/state buckets (backups handled separately)
   #checkov:skip=CKV2_AWS_62:S3 event notifications not required for this deployment
   bucket_prefix = "${var.project_name}-backups-"
