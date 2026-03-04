@@ -132,8 +132,8 @@ One-time S3 state backend setup (run independently before the main module).
 
 - AWS account with appropriate permissions
 - Terraform >= 1.5
-- A domain name with DNS managed in Cloudflare
-- Cloudflare account with DNS zone for your domain
+- A domain name with a Route53 hosted zone (created by Terraform)
+- Access to the parent DNS zone for subdomain NS delegation
 
 ## Usage
 
@@ -159,8 +159,7 @@ Key variables in `terraform.tfvars`:
 | `enable_backup_replication` | Cross-region S3 backup replication (CP-6) | `false` |
 | `alert_email` | Email for CloudWatch alarm notifications | -- |
 
-After `terraform apply`, create the ACM DNS validation CNAME record in Cloudflare.
-The required validation records are shown in: `terraform output acm_validation_records`
+ACM certificate DNS validation is automated via Route53 -- no manual step required.
 
 Connect to the instance via SSM:
 
@@ -198,15 +197,17 @@ aws ssm start-session --target <instance-id>
      --secret-string "your-initial-root-password"
    ```
 
-## DNS Configuration (Cloudflare)
+## DNS Configuration (Route53 Subdomain Delegation)
 
-DNS is managed via Cloudflare, outside of Terraform. After deployment:
+DNS is managed via a Route53 hosted zone created by the `dns` module. The parent zone (`agiledefense.xyz`) is in a separate AWS account. After deployment:
 
-1. Get the ALB DNS name from Terraform outputs: `terraform output alb_dns_name`
-2. In Cloudflare, create a CNAME record:
-   - **Name:** `gitlab` (or your subdomain)
-   - **Target:** The ALB DNS name from step 1
-   - **Proxy status:** DNS only (gray cloud) -- proxied mode changes source IPs to Cloudflare, which breaks WAF rate limiting and GuardDuty network detection
+1. Get the nameservers: `terraform output route53_nameservers`
+2. In the parent zone (`agiledefense.xyz`), create NS records:
+   - **Name:** `code` (or whatever subdomain matches your `domain_name`)
+   - **Type:** NS
+   - **Values:** The 4 nameservers from step 1
+3. Wait for DNS propagation (typically 5-60 minutes)
+4. ACM certificate validation happens automatically via Route53
 
 ## Outputs
 
@@ -218,6 +219,7 @@ DNS is managed via Cloudflare, outside of Terraform. After deployment:
 | `gitlab_url` | GitLab URL (`https://<domain>`) |
 | `backup_bucket` | S3 backup bucket name |
 | `ssm_connect_command` | SSM session command |
+| `route53_nameservers` | Route53 NS records for parent zone delegation |
 
 ## Documentation
 
