@@ -421,7 +421,7 @@ Track the following metrics across all incidents to measure and improve response
 | CISA (US-CERT) | Federal incident reporting | https://www.cisa.gov/report / (888) 282-0870 | Required for federal systems within 72 hours |
 | DoD Cyber Crime Center (DC3) | DoD cyber incident reporting | https://www.dc3.mil | Required per DoDI 8530.01 |
 | DISA JFHQ-DODIN | DoD network defense coordination | [Contact method per org policy] | Category reporting per CJCSM 6510.01B |
-| DNS Provider (Cloudflare) | DNS record changes during incident | Cloudflare dashboard / [Account email] | DNS is external to this deployment |
+| DNS Parent Zone Admin | NS delegation changes during incident | AWS Console (separate account) / [Admin contact] | Parent zone (agiledefense.xyz) is in a separate AWS account |
 
 ---
 

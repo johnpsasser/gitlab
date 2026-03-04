@@ -73,7 +73,7 @@ The authorization boundary encompasses all AWS resources provisioned by the Terr
 - **Automation**: Lambda functions (inactive user deactivation, secrets rotation, CISA KEV monitoring)
 - **Identity**: IAM roles and policies, ACM certificates
 
-**Excluded from boundary**: Cloudflare DNS (external), end-user workstations, AWS management plane (covered by AWS FedRAMP P-ATO).
+**Excluded from boundary**: Parent DNS zone (agiledefense.xyz, separate AWS account), end-user workstations, AWS management plane (covered by AWS FedRAMP P-ATO).
 
 ---
 
@@ -134,7 +134,7 @@ The system deploys into a custom VPC spanning 2 Availability Zones:
 Internet
    |
    v
-[Cloudflare DNS] --> [ALB + WAF (Public Subnets, 2 AZs)]
+[Route53 DNS (code.agiledefense.xyz)] --> [ALB + WAF (Public Subnets, 2 AZs)]
                           |
                      [TLS 1.3 termination]
                           |
@@ -207,7 +207,7 @@ kms --> networking --> gitlab
 
 | # | External System | Direction | Protocol | Data Exchanged | Authorization |
 |---|---|---|---|---|---|
-| 1 | Cloudflare DNS | Outbound (DNS resolution) | HTTPS / DNS | DNS records pointing to ALB | External service; not within authorization boundary |
+| 1 | Route53 (parent zone) | Outbound (NS delegation) | DNS | NS records delegating subdomain | Parent zone in separate AWS account; not within authorization boundary |
 | 2 | GitLab Package Repository (`packages.gitlab.com`) | Outbound | HTTPS | GitLab CE RPM packages and updates | Vendor-managed repository |
 | 3 | ClamAV Signature Database (`database.clamav.net`) | Outbound | HTTPS | Malware signature updates (daily) | Open-source antimalware project |
 | 4 | CISA KEV Catalog (`www.cisa.gov`) | Outbound | HTTPS | Known Exploited Vulnerabilities JSON feed (daily poll) | U.S. Government public data feed |
@@ -419,7 +419,7 @@ The customer (system owner) is responsible for:
 3. **Config Restoration**: Download the latest config backup from S3 and extract to `/etc/gitlab/`.
 4. **Secrets Restoration**: Retrieve `gitlab-secrets.json` and root password from Secrets Manager.
 5. **Reconfigure**: Run `gitlab-ctl reconfigure` to apply restored configuration.
-6. **DNS Update**: Update Cloudflare DNS to point to the new ALB endpoint.
+6. **DNS Update**: Route53 alias record is managed by Terraform and updates automatically. Verify NS delegation in parent zone if hosted zone was recreated.
 7. **Verification**: Confirm GitLab health check passes (`/-/health`), verify user access, and validate backup schedules are active.
 
 #### Separate Data Volume
