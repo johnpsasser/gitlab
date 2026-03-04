@@ -26,14 +26,14 @@ resource "aws_instance" "gitlab" {
     volume_size = 50
     volume_type = "gp3"
     encrypted   = true
+    kms_key_id  = var.ebs_kms_key_id
   }
 
   user_data = templatefile("${path.module}/user_data.sh", {
-    region          = data.aws_region.current.name
-    project_name    = var.project_name
-    domain_name     = var.domain_name
-    google_oauth_hd = var.google_oauth_hd
-    backup_bucket   = aws_s3_bucket.backups.id
+    region        = data.aws_region.current.name
+    project_name  = var.project_name
+    domain_name   = var.domain_name
+    backup_bucket = aws_s3_bucket.backups.id
   })
 
   metadata_options {
@@ -52,11 +52,11 @@ resource "aws_instance" "gitlab" {
 
 # Separate data volume for /var/opt/gitlab
 resource "aws_ebs_volume" "data" {
-  #checkov:skip=CKV_AWS_189:EBS KMS CMK — default aws/ebs key provides encryption at rest
   availability_zone = aws_instance.gitlab.availability_zone
   size              = var.data_volume_size
   type              = "gp3"
   encrypted         = true
+  kms_key_id        = var.ebs_kms_key_id
 
   tags = {
     Name = "${var.project_name}-data"

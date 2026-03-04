@@ -9,9 +9,6 @@ instance_type = "t3.xlarge"
 # Your GitLab domain
 domain_name = "gitlab.yourcompany.com"
 
-# Google Workspace domain for OAuth restriction
-google_oauth_hd = "yourcompany.com"
-
 # DNS is managed via Cloudflare (outside Terraform).
 # After terraform apply, create a CNAME record in Cloudflare pointing
 # your domain to the ALB DNS name (shown in terraform output alb_dns_name).
@@ -20,3 +17,6 @@ google_oauth_hd = "yourcompany.com"
 # Backup
 data_volume_size          = 100
 backup_replication_region = "us-west-2"
+
+# DoD IL2 classification tag
+data_classification = "IL2"

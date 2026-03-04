@@ -1,5 +1,4 @@
 resource "aws_wafv2_web_acl" "gitlab" {
-  #checkov:skip=CKV2_AWS_31:WAF logging — CloudWatch metrics enabled; dedicated WAF log group not required for this deployment
   name  = "${var.project_name}-waf"
   scope = "REGIONAL"
 
@@ -87,4 +86,18 @@ resource "aws_wafv2_web_acl" "gitlab" {
 resource "aws_wafv2_web_acl_association" "gitlab" {
   resource_arn = var.alb_arn
   web_acl_arn  = aws_wafv2_web_acl.gitlab.arn
+}
+
+resource "aws_cloudwatch_log_group" "waf" {
+  name              = "aws-waf-logs-${var.project_name}"
+  retention_in_days = 365
+
+  tags = {
+    Name = "${var.project_name}-waf-logs"
+  }
+}
+
+resource "aws_wafv2_web_acl_logging_configuration" "gitlab" {
+  log_destination_configs = [aws_cloudwatch_log_group.waf.arn]
+  resource_arn            = aws_wafv2_web_acl.gitlab.arn
 }

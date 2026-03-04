@@ -25,3 +25,7 @@ output "alb_security_group_id" {
 output "gitlab_security_group_id" {
   value = aws_security_group.gitlab.id
 }
+
+output "s3_access_logs_bucket_id" {
+  value = aws_s3_bucket.access_logs.id
+}

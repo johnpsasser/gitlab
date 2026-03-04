@@ -30,8 +30,14 @@ variable "domain_name" {
   type = string
 }
 
-variable "google_oauth_hd" {
-  type = string
+variable "ebs_kms_key_id" {
+  description = "KMS key ID for EBS volume encryption"
+  type        = string
+}
+
+variable "kms_key_id" {
+  description = "KMS key ID for Secrets Manager encryption"
+  type        = string
 }
 
 variable "backup_bucket_arn" {

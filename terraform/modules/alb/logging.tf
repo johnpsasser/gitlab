@@ -2,7 +2,6 @@ data "aws_elb_service_account" "main" {}
 
 resource "aws_s3_bucket" "alb_logs" {
   #checkov:skip=CKV_AWS_145:ALB log bucket must use AES256 (ALB doesn't support KMS for access logs)
-  #checkov:skip=CKV_AWS_18:Access logging on log buckets creates circular dependency
   #checkov:skip=CKV_AWS_21:S3 versioning not needed for append-only log buckets
   #checkov:skip=CKV_AWS_144:S3 cross-region replication not needed for log buckets (backups handled separately)
   #checkov:skip=CKV2_AWS_62:S3 event notifications not required for this deployment
@@ -20,6 +19,12 @@ resource "aws_s3_bucket_server_side_encryption_configuration" "alb_logs" {
       sse_algorithm = "AES256" # ALB logs require AES256, not KMS
     }
   }
+}
+
+resource "aws_s3_bucket_logging" "alb_logs" {
+  bucket        = aws_s3_bucket.alb_logs.id
+  target_bucket = var.s3_access_logs_bucket_id
+  target_prefix = "alb-logs/"
 }
 
 resource "aws_s3_bucket_public_access_block" "alb_logs" {

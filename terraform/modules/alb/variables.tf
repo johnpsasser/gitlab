@@ -22,3 +22,8 @@ variable "domain_name" {
 variable "gitlab_instance_id" {
   type = string
 }
+
+variable "s3_access_logs_bucket_id" {
+  description = "S3 bucket ID for access logging"
+  type        = string
+}

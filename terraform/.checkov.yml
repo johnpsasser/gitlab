@@ -5,8 +5,6 @@ skip-check:
   - CKV2_AWS_5
   # Default VPC security group — managed by AWS, not in scope
   - CKV2_AWS_12
-  # Terraform state bucket lifecycle managed via bootstrap, not main config
-  - CKV2_AWS_61
 framework:
   - terraform
 compact: true

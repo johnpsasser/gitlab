@@ -5,3 +5,7 @@ output "cloudtrail_arn" {
 output "cloudtrail_bucket" {
   value = aws_s3_bucket.cloudtrail.id
 }
+
+output "sns_topic_arn" {
+  value = aws_sns_topic.alerts.arn
+}

@@ -6,16 +6,13 @@ echo "=== GitLab CE Bootstrap ==="
 REGION="${region}"
 PROJECT="${project_name}"
 DOMAIN="${domain_name}"
-OAUTH_HD="${google_oauth_hd}"
 
-# Enable FIPS mode
-fips-mode-setup --enable || echo "FIPS mode setup attempted"
+# FIPS mode: use a FIPS-validated AMI (al2023-ami-*-fips-*) for IL2 compliance
 
 # Install dependencies
-dnf install -y curl policycoreutils openssh-server openssh-clients perl postfix jq
+dnf install -y curl policycoreutils perl postfix jq
 
 # Start and enable services
-systemctl enable --now sshd
 systemctl enable --now postfix
 
 # Fetch secrets from Secrets Manager
@@ -28,8 +25,6 @@ get_secret() {
 }
 
 ROOT_PASSWORD=$(get_secret "$PROJECT/root-password")
-OAUTH_CLIENT_ID=$(get_secret "$PROJECT/oauth/client-id")
-OAUTH_CLIENT_SECRET=$(get_secret "$PROJECT/oauth/client-secret")
 
 
 # Wait for EBS data volume to attach
@@ -66,15 +61,10 @@ external_url 'https://${domain_name}'
 nginx['listen_https'] = false
 nginx['listen_port'] = 80
 
-# Google OAuth
-gitlab_rails['omniauth_enabled'] = true
-gitlab_rails['omniauth_allow_single_sign_on'] = ['google_oauth2']
-gitlab_rails['omniauth_block_auto_created_users'] = false
-gitlab_rails['omniauth_auto_link_user'] = ['google_oauth2']
-
 # Security hardening
 gitlab_rails['gitlab_signup_enabled'] = false
-gitlab_rails['password_authentication_enabled_for_web'] = true  # Enabled initially for root login
+gitlab_rails['password_authentication_enabled_for_web'] = true  # GitLab native authentication for IL2 compliance
+gitlab_rails['password_minimum_length'] = 15
 gitlab_rails['gravatar_enabled'] = false
 gitlab_rails['default_projects_features_visibility_level'] = 'private'
 gitlab_rails['default_project_visibility'] = 'private'
@@ -87,7 +77,7 @@ gitlab_rails['throttle_authenticated_api_requests_per_period'] = 2000
 gitlab_rails['throttle_authenticated_api_period_in_seconds'] = 3600
 
 # Session management
-gitlab_rails['session_expire_delay'] = 480
+gitlab_rails['session_expire_delay'] = 60
 
 # Restrict outbound requests
 gitlab_rails['allow_local_requests_from_web_hooks_and_services'] = false
@@ -105,20 +95,6 @@ gitlab_rails['backup_keep_time'] = 604800
 gitlab_rails['monitoring_whitelist'] = ['127.0.0.0/8']
 GITLABCFG
 
-# Inject OAuth credentials (avoid putting secrets in the heredoc)
-if [ -n "$OAUTH_CLIENT_ID" ] && [ -n "$OAUTH_CLIENT_SECRET" ]; then
-cat >> /etc/gitlab/gitlab.rb << OAUTHCFG
-gitlab_rails['omniauth_providers'] = [
-  {
-    name: "google_oauth2",
-    app_id: "$OAUTH_CLIENT_ID",
-    app_secret: "$OAUTH_CLIENT_SECRET",
-    args: { hd: "$OAUTH_HD", approval_prompt: "auto" }
-  }
-]
-OAUTHCFG
-fi
-
 # Set initial root password
 if [ -n "$ROOT_PASSWORD" ]; then
   export GITLAB_ROOT_PASSWORD="$ROOT_PASSWORD"
@@ -130,7 +106,7 @@ gitlab-ctl reconfigure
 # Set up daily backup cron
 cat > /etc/cron.d/gitlab-backup << 'CRON'
 0 2 * * * root /opt/gitlab/bin/gitlab-backup create STRATEGY=copy CRON=1
-15 2 * * * root tar czf /var/opt/gitlab/backups/gitlab-config-$(date +\%Y\%m\%d).tar.gz /etc/gitlab/
+15 2 * * * root tar czf /var/opt/gitlab/backups/gitlab-config-$(date +\%Y\%m\%d).tar.gz /etc/gitlab/ && aws s3 cp /var/opt/gitlab/backups/gitlab-config-$(date +\%Y\%m\%d).tar.gz s3://${backup_bucket}/config-backups/ --region ${region}
 CRON
 
 # Install CloudWatch agent for disk monitoring

@@ -21,11 +21,6 @@ variable "domain_name" {
   type        = string
 }
 
-variable "google_oauth_hd" {
-  description = "Google Workspace hosted domain for OAuth restriction"
-  type        = string
-}
-
 variable "instance_type" {
   description = "EC2 instance type for GitLab"
   type        = string
@@ -42,4 +37,10 @@ variable "backup_replication_region" {
   description = "AWS region for backup cross-region replication"
   type        = string
   default     = "us-west-2"
+}
+
+variable "data_classification" {
+  description = "DoD data classification level"
+  type        = string
+  default     = "IL2"
 }

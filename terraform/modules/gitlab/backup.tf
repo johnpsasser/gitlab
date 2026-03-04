@@ -1,5 +1,5 @@
 resource "aws_s3_bucket" "backups" {
-  #checkov:skip=CKV_AWS_18:Access logging on log buckets creates circular dependency
+  # TODO: Enable S3 access logging once access-logs bucket ID is passed through (IL2 AU-2)
   #checkov:skip=CKV_AWS_144:S3 cross-region replication not needed for log/state buckets (backups handled separately)
   #checkov:skip=CKV2_AWS_62:S3 event notifications not required for this deployment
   bucket_prefix = "${var.project_name}-backups-"
@@ -20,7 +20,8 @@ resource "aws_s3_bucket_server_side_encryption_configuration" "backups" {
   bucket = aws_s3_bucket.backups.id
   rule {
     apply_server_side_encryption_by_default {
-      sse_algorithm = "aws:kms"
+      sse_algorithm     = "aws:kms"
+      kms_master_key_id = var.kms_key_id
     }
   }
 }

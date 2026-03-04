@@ -2,20 +2,70 @@ data "aws_caller_identity" "current" {}
 
 resource "aws_cloudtrail" "main" {
   #checkov:skip=CKV_AWS_252:CloudTrail SNS topic not needed — alarms handled via CloudWatch
-  #checkov:skip=CKV2_AWS_10:CloudTrail CloudWatch Logs integration handled separately
-  #checkov:skip=CKV_AWS_35:CloudTrail KMS CMK — using S3 SSE-KMS already
-  #checkov:skip=CKV_AWS_67:Single-region CloudTrail is intentional for this deployment
   name                          = "${var.project_name}-trail"
   s3_bucket_name                = aws_s3_bucket.cloudtrail.id
-  is_multi_region_trail         = false
+  is_multi_region_trail         = true
   enable_log_file_validation    = true
   include_global_service_events = true
+  kms_key_id                    = var.cloudtrail_kms_key_arn
+  cloud_watch_logs_group_arn    = "${aws_cloudwatch_log_group.cloudtrail.arn}:*"
+  cloud_watch_logs_role_arn     = aws_iam_role.cloudtrail_cloudwatch.arn
 
   tags = {
     Name = "${var.project_name}-cloudtrail"
   }
 
   depends_on = [aws_s3_bucket_policy.cloudtrail]
+}
+
+resource "aws_cloudwatch_log_group" "cloudtrail" {
+  name              = "/${var.project_name}/cloudtrail"
+  retention_in_days = 365
+  kms_key_id        = var.kms_key_arn
+
+  tags = {
+    Name = "${var.project_name}-cloudtrail-logs"
+  }
+}
+
+resource "aws_iam_role" "cloudtrail_cloudwatch" {
+  name = "${var.project_name}-cloudtrail-cw-role"
+
+  assume_role_policy = jsonencode({
+    Version = "2012-10-17"
+    Statement = [
+      {
+        Action = "sts:AssumeRole"
+        Effect = "Allow"
+        Principal = {
+          Service = "cloudtrail.amazonaws.com"
+        }
+      }
+    ]
+  })
+
+  tags = {
+    Name = "${var.project_name}-cloudtrail-cw-role"
+  }
+}
+
+resource "aws_iam_role_policy" "cloudtrail_cloudwatch" {
+  name = "${var.project_name}-cloudtrail-cw-policy"
+  role = aws_iam_role.cloudtrail_cloudwatch.id
+
+  policy = jsonencode({
+    Version = "2012-10-17"
+    Statement = [
+      {
+        Effect = "Allow"
+        Action = [
+          "logs:CreateLogStream",
+          "logs:PutLogEvents"
+        ]
+        Resource = "${aws_cloudwatch_log_group.cloudtrail.arn}:*"
+      }
+    ]
+  })
 }
 
 resource "aws_s3_bucket" "cloudtrail" {
@@ -33,7 +83,8 @@ resource "aws_s3_bucket_server_side_encryption_configuration" "cloudtrail" {
   bucket = aws_s3_bucket.cloudtrail.id
   rule {
     apply_server_side_encryption_by_default {
-      sse_algorithm = "aws:kms"
+      sse_algorithm     = "aws:kms"
+      kms_master_key_id = var.kms_key_arn
     }
   }
 }
