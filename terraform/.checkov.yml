@@ -1,0 +1,10 @@
+# Checkov configuration
+# Global skips that cannot be scoped to individual resources
+skip-check:
+  # Security groups ARE attached via module references (Checkov can't trace cross-module)
+  - CKV2_AWS_5
+  # Default VPC security group — managed by AWS, not in scope
+  - CKV2_AWS_12
+framework:
+  - terraform
+compact: true

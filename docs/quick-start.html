@@ -1,0 +1,308 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>GitLab Quick Start Guide</title>
+  <style>
+    :root {
+      --bg: #ffffff;
+      --fg: #1a1a2e;
+      --accent: #e74d3c;
+      --accent-light: #fdf0ee;
+      --border: #e0e0e0;
+      --code-bg: #f5f5f5;
+      --code-border: #ddd;
+      --success: #27ae60;
+      --warning: #f39c12;
+    }
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+      color: var(--fg);
+      background: var(--bg);
+      line-height: 1.6;
+      max-width: 800px;
+      margin: 0 auto;
+      padding: 2rem 1.5rem;
+    }
+    h1 { font-size: 2rem; margin-bottom: 0.5rem; }
+    h2 {
+      font-size: 1.4rem;
+      margin-top: 2.5rem;
+      margin-bottom: 1rem;
+      padding-bottom: 0.4rem;
+      border-bottom: 2px solid var(--accent);
+    }
+    h3 { font-size: 1.1rem; margin-top: 1.5rem; margin-bottom: 0.5rem; }
+    p, li { margin-bottom: 0.6rem; }
+    ol, ul { padding-left: 1.5rem; }
+    a { color: var(--accent); text-decoration: none; }
+    a:hover { text-decoration: underline; }
+    .subtitle { color: #666; font-size: 1rem; margin-bottom: 2rem; }
+    .step-number {
+      display: inline-block;
+      background: var(--accent);
+      color: white;
+      width: 1.6rem;
+      height: 1.6rem;
+      border-radius: 50%;
+      text-align: center;
+      font-size: 0.85rem;
+      line-height: 1.6rem;
+      margin-right: 0.5rem;
+      font-weight: bold;
+    }
+    .prereq {
+      background: var(--accent-light);
+      border-left: 4px solid var(--accent);
+      padding: 1rem 1.2rem;
+      margin: 1rem 0;
+      border-radius: 0 4px 4px 0;
+    }
+    .note {
+      background: #fff8e1;
+      border-left: 4px solid var(--warning);
+      padding: 1rem 1.2rem;
+      margin: 1rem 0;
+      border-radius: 0 4px 4px 0;
+    }
+    pre {
+      background: var(--code-bg);
+      border: 1px solid var(--code-border);
+      border-radius: 4px;
+      padding: 1rem;
+      overflow-x: auto;
+      margin: 0.8rem 0;
+      position: relative;
+    }
+    code {
+      font-family: "SF Mono", "Fira Code", "Fira Mono", Menlo, Consolas, monospace;
+      font-size: 0.9em;
+    }
+    p code, li code {
+      background: var(--code-bg);
+      padding: 0.15rem 0.4rem;
+      border-radius: 3px;
+      border: 1px solid var(--code-border);
+    }
+    .copy-btn {
+      position: absolute;
+      top: 0.5rem;
+      right: 0.5rem;
+      background: white;
+      border: 1px solid var(--code-border);
+      border-radius: 3px;
+      padding: 0.2rem 0.5rem;
+      cursor: pointer;
+      font-size: 0.75rem;
+      color: #666;
+    }
+    .copy-btn:hover { background: var(--accent-light); color: var(--accent); }
+    .copy-btn.copied { color: var(--success); border-color: var(--success); }
+    table {
+      width: 100%;
+      border-collapse: collapse;
+      margin: 1rem 0;
+    }
+    th, td {
+      text-align: left;
+      padding: 0.6rem 0.8rem;
+      border: 1px solid var(--border);
+    }
+    th { background: var(--code-bg); font-weight: 600; }
+    footer {
+      margin-top: 3rem;
+      padding-top: 1rem;
+      border-top: 1px solid var(--border);
+      color: #888;
+      font-size: 0.85rem;
+    }
+  </style>
+</head>
+<body>
+  <h1>GitLab Quick Start Guide</h1>
+  <p class="subtitle">Developer onboarding for the GitLab instance</p>
+
+  <div class="note">
+    <strong>Administrators:</strong> Before distributing this guide, replace <code>gitlab.example.com</code> throughout with your actual GitLab domain name.
+  </div>
+
+  <h2>1. Prerequisites</h2>
+  <div class="prereq">
+    <p>Before you begin, ensure you have:</p>
+    <ul>
+      <li>A <strong>GitLab account</strong> (created by your administrator)</li>
+      <li>An <strong>authenticator app</strong> for two-factor authentication (e.g., Google Authenticator, Authy, 1Password)</li>
+      <li><strong>Git</strong> installed on your machine</li>
+    </ul>
+  </div>
+
+  <h2>2. Connect to GitLab</h2>
+  <ol>
+    <li>Open your browser and navigate to: <pre><code>https://gitlab.example.com</code><button class="copy-btn" onclick="copyCode(this)">Copy</button></pre></li>
+    <li>Enter your <strong>username</strong> and <strong>password</strong> provided by your administrator</li>
+    <li>On first login, you'll be prompted to set up <strong>two-factor authentication</strong> (2FA)</li>
+    <li>Scan the QR code with your authenticator app</li>
+    <li>Enter the 6-digit code to verify, then save your recovery codes</li>
+  </ol>
+  <div class="note">
+    <strong>First time?</strong> Your administrator will create your account and provide initial credentials. You'll be required to set up 2FA on your first login. Store your recovery codes in a secure location.
+  </div>
+
+  <h2>3. Create a Personal Access Token</h2>
+  <p>Personal access tokens are used for Git operations over HTTPS and API access.</p>
+  <ol>
+    <li>Go to <strong>User Settings &rarr; Access Tokens</strong></li>
+    <li>Click <strong>"Add new token"</strong></li>
+    <li>Enter a <strong>Token name</strong> (e.g., "CLI access")</li>
+    <li>Set an <strong>Expiration date</strong> (max 365 days)</li>
+    <li>Select scopes:
+      <ul>
+        <li><code>api</code> &mdash; full API access</li>
+        <li><code>read_repository</code> &mdash; read-only Git access</li>
+        <li><code>write_repository</code> &mdash; read-write Git access</li>
+      </ul>
+    </li>
+    <li>Click <strong>"Create personal access token"</strong></li>
+    <li><strong>Copy the token immediately</strong> &mdash; it won't be shown again</li>
+  </ol>
+  <div class="note">
+    <strong>Store your token securely.</strong> Use a password manager or your OS keychain. Never commit tokens to version control.
+  </div>
+
+  <h2>4. Clone Your First Repository</h2>
+  <pre><code>git clone https://gitlab.example.com/your-group/your-project.git
+# When prompted for password, use your Personal Access Token</code><button class="copy-btn" onclick="copyCode(this)">Copy</button></pre>
+
+  <p>To avoid entering your token every time, configure Git credential storage:</p>
+  <pre><code># macOS (uses Keychain)
+git config --global credential.helper osxkeychain
+
+# Linux (stores in memory for 1 hour)
+git config --global credential.helper 'cache --timeout=3600'</code><button class="copy-btn" onclick="copyCode(this)">Copy</button></pre>
+
+  <h2>5. Troubleshooting</h2>
+  <table>
+    <tr><th>Problem</th><th>Solution</th></tr>
+    <tr>
+      <td><strong>Can't reach GitLab URL</strong></td>
+      <td>Verify your internet connection. If the issue persists, check with your admin to confirm the service is running.</td>
+    </tr>
+    <tr>
+      <td><strong>2FA setup not working</strong></td>
+      <td>Ensure your authenticator app's time is synced. Try a different authenticator app. If locked out, contact your administrator to reset 2FA.</td>
+    </tr>
+    <tr>
+      <td><strong>Account locked after failed logins</strong></td>
+      <td>GitLab locks accounts after multiple failed attempts. Wait 10 minutes or contact your administrator to unlock.</td>
+    </tr>
+    <tr>
+      <td><strong>HTTPS clone asks for username</strong></td>
+      <td>Use your GitLab username (not email). For the password, use your Personal Access Token.</td>
+    </tr>
+    <tr>
+      <td><strong>SSL certificate error</strong></td>
+      <td>The GitLab instance uses a valid ACM certificate. If you see SSL errors, try clearing your browser cache or check with your admin.</td>
+    </tr>
+    <tr>
+      <td><strong>"403 Forbidden" on git push</strong></td>
+      <td>Check that your Personal Access Token has the <code>write_repository</code> scope. Check that you have Developer or Maintainer role on the project.</td>
+    </tr>
+  </table>
+
+  <h2>6. Administrator: Post-Deployment Setup</h2>
+  <div class="prereq">
+    <p>The following steps are for <strong>system administrators</strong> after running <code>terraform apply</code>.</p>
+  </div>
+
+  <h3><span class="step-number">1</span> Populate GitLab Admin PAT</h3>
+  <p>The user deactivation Lambda needs a GitLab admin Personal Access Token with <code>api</code> scope. Create one in GitLab, then store it:</p>
+  <pre><code>aws secretsmanager put-secret-value \
+  --secret-id gitlab/gitlab-admin-pat \
+  --secret-string "glpat-xxxxxxxxxxxxxxxxxxxx"</code><button class="copy-btn" onclick="copyCode(this)">Copy</button></pre>
+
+  <h3><span class="step-number">2</span> Validate User Deactivation Lambda</h3>
+  <p>The Lambda runs in <code>DRY_RUN</code> mode by default. Test invoke to verify it correctly identifies inactive users:</p>
+  <pre><code>aws lambda invoke --function-name gitlab-user-deactivation /dev/stdout</code><button class="copy-btn" onclick="copyCode(this)">Copy</button></pre>
+  <p>Once validated, set <code>dry_run = false</code> in <code>terraform.tfvars</code> and re-apply.</p>
+
+  <h3><span class="step-number">3</span> Verify Inspector Scanning</h3>
+  <p>Confirm Amazon Inspector is actively scanning the EC2 instance:</p>
+  <pre><code>aws inspector2 list-coverage --filter-criteria '{
+  "resourceType": [{"comparison": "EQUALS", "value": "AWS_EC2_INSTANCE"}]
+}'</code><button class="copy-btn" onclick="copyCode(this)">Copy</button></pre>
+
+  <h3><span class="step-number">4</span> Verify ClamAV</h3>
+  <p>Connect via SSM and verify ClamAV is running:</p>
+  <pre><code># Connect to the instance
+aws ssm start-session --target &lt;instance-id&gt;
+
+# Check ClamAV status
+systemctl status clamd@scan
+freshclam --version
+ls -la /var/log/clamav/</code><button class="copy-btn" onclick="copyCode(this)">Copy</button></pre>
+
+  <h3><span class="step-number">5</span> Store Root Password for Rotation</h3>
+  <p>The secrets rotation Lambda rotates the root password automatically every 90 days. Ensure the initial password is stored:</p>
+  <pre><code>aws secretsmanager put-secret-value \
+  --secret-id gitlab/root-password \
+  --secret-string "your-initial-root-password"</code><button class="copy-btn" onclick="copyCode(this)">Copy</button></pre>
+  <div class="note">
+    <strong>Note:</strong> After the first automatic rotation, the password in Secrets Manager will be updated automatically. Always retrieve the current password from Secrets Manager before logging in as root.
+  </div>
+
+  <h3><span class="step-number">6</span> Admin PAT Rotation (IA-5)</h3>
+  <p>The GitLab admin PAT used by the user deactivation Lambda should be rotated periodically per organizational policy:</p>
+  <ol>
+    <li>Log into GitLab as the admin user</li>
+    <li>Navigate to <strong>User Settings &gt; Access Tokens</strong></li>
+    <li>Create a new token with <code>api</code> scope</li>
+    <li>Update the secret in Secrets Manager:
+      <pre><code>aws secretsmanager put-secret-value \
+  --secret-id gitlab/gitlab-admin-pat \
+  --secret-string "glpat-NEW-TOKEN-VALUE"</code></pre>
+    </li>
+    <li>Revoke the old token in GitLab</li>
+    <li>Test the Lambda to verify the new token works:
+      <pre><code>aws lambda invoke --function-name gitlab-user-deactivation /dev/stdout</code></pre>
+    </li>
+  </ol>
+
+  <h3><span class="step-number">7</span> gitlab-secrets.json Backup and Rotation</h3>
+  <p>The <code>gitlab-secrets.json</code> file contains Rails secret keys and internal encryption keys. It is backed up to Secrets Manager but rotation requires careful coordination:</p>
+  <ol>
+    <li>Back up current secrets:
+      <pre><code># Via SSM session
+aws secretsmanager put-secret-value \
+  --secret-id gitlab/secrets-json \
+  --secret-string "$(sudo cat /etc/gitlab/gitlab-secrets.json)"</code></pre>
+    </li>
+    <li><strong>Note:</strong> Rotating the Rails secret_key_base invalidates all existing user sessions and encrypted tokens. Plan for user re-authentication.</li>
+    <li>After any rotation, run <code>gitlab-ctl reconfigure</code> and verify GitLab functionality.</li>
+  </ol>
+  <div class="note">
+    <strong>Important:</strong> gitlab-secrets.json rotation is a manual procedure due to its impact on user sessions and encrypted data. Automate only after thorough testing in a non-production environment.
+  </div>
+
+  <footer>
+    <p>For support, contact your GitLab administrator.</p>
+  </footer>
+
+  <script>
+    function copyCode(btn) {
+      const pre = btn.parentElement;
+      const code = pre.querySelector('code');
+      const text = code.textContent;
+      navigator.clipboard.writeText(text).then(() => {
+        btn.textContent = 'Copied!';
+        btn.classList.add('copied');
+        setTimeout(() => {
+          btn.textContent = 'Copy';
+          btn.classList.remove('copied');
+        }, 2000);
+      });
+    }
+  </script>
+</body>
+</html>

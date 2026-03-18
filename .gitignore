@@ -1,0 +1,22 @@
+# Terraform
+terraform/.terraform/
+terraform/**/.terraform/
+*.tfstate
+*.tfstate.backup
+*.tfplan
+*.tfvars
+terraform/modules/**/*.zip
+
+# Secrets
+*.pem
+*.key
+
+# Docs
+docs/plans/
+
+# Claude
+CLAUDE.md
+.claude/
+
+# OS
+.DS_Store
